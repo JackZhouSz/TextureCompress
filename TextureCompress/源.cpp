@@ -40,6 +40,10 @@ int main(int argc, char* argv[]) {
     Vec3f Color = Vec3f(0, 0, 255.0); //bgr 0-255
     blocks[196]->setColor(img, Color);
 
+    Match match(2.0f,0.5f,0.0f,1.1f,40.0f,-200.0f);
+    blocks[196]->affineDeformation(img, match);
+
+
     //显示图像
     imshow("image", img);
 
