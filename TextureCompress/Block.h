@@ -41,8 +41,8 @@ private:
 
 void Block::setColor(Mat& img, Vec3f color)
 {
-    for (int row = this->startHeight; row < this->startHeight+this->size; row ++) {
-        for (int col=this->startWidth; col < this->startWidth + this->size; col++) {
+    for (int row = this->startHeight; row < this->startHeight + this->size; row++) {
+        for (int col = this->startWidth; col < this->startWidth + this->size; col++) {
             img.at<Vec3b>(row, col)[0] = color[0]; //blue
             img.at<Vec3b>(row, col)[1] = color[1]; //green
             img.at<Vec3b>(row, col)[2] = color[2]; //red
