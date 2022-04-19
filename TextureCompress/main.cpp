@@ -1,5 +1,6 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
+#include <cmath>
 #include "Block.h"
 
 using namespace std;
@@ -9,7 +10,7 @@ int blockSize = 32;
 vector<Block*> blocks;
 
 int main(int argc, char* argv[]) {
-    const char* imagename = "D:\\NewPro\\TextureCompress\\Test\\t2.png";//此处为你自己的图片路径
+    const char* imagename = "F:\\NewPro\\TextureCompress\\Test\\t2.png";//此处为你自己的图片路径
 
     //从文件中读入图像
     Mat img = imread(imagename, 1);
@@ -40,8 +41,10 @@ int main(int argc, char* argv[]) {
     Vec3f Color = Vec3f(0, 0, 255.0); //bgr 0-255
     blocks[196]->setColor(img, Color);
 
-    Match match(2.0f,0.5f,0.0f,1.1f,40.0f,-200.0f);
-    blocks[196]->affineDeformation(img, match);
+    Match match(2.0f,1.0f,0.0f,2.0f,0.0f,0.0f,-60.0f);
+    //blocks[196]->affineDeformation(img, match);
+
+    blocks[196]->rotation(img, match);
 
 
     //显示图像
@@ -51,3 +54,4 @@ int main(int argc, char* argv[]) {
     waitKey();
     return 0;
 }
+

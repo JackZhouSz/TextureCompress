@@ -7,7 +7,10 @@
 
 #include <opencv2/opencv.hpp>
 #include <iostream>
+#include <cmath>
 #include "Match.h"
+
+#define pi 3.14159
 
 using namespace cv;
 
@@ -26,6 +29,7 @@ public:
 
     void setColor(Mat& img, Vec3f color);
     void affineDeformation(Mat& img, Match match);
+    void rotation(Mat& img, Match match);
 
 private:
     int index;
@@ -48,16 +52,33 @@ void Block::setColor(Mat& img, Vec3f color)
 
 void Block::affineDeformation(Mat& img, Match match)
 {
-    for (int row = this->startHeight; row < this->startHeight + this->size; row++) {
-        for (int col = this->startWidth; col < this->startWidth + this->size; col++) {
-            int tmpCol = (int)(match.m_00 * col + match.m_01 * row + match.m_a);
-            int tmpRow = (int)(match.m_10 * col + match.m_11 * row + match.m_b);
+    for (int row = 0; row < this->size; row++) {
+        for (int col = 0; col < this->size; col++) {
+            int tmpCol = (int)(match.m_00 * col + match.m_01 * row + match.m_a) + this->startWidth;
+            int tmpRow = (int)(match.m_10 * col + match.m_11 * row + match.m_b) + this->startHeight;
             if (tmpCol < img.cols && tmpRow < img.rows) {
                 img.at<Vec3b>(tmpRow, tmpCol)[0] = 0; //blue
                 img.at<Vec3b>(tmpRow, tmpCol)[1] = 255; //green
                 img.at<Vec3b>(tmpRow, tmpCol)[2] = 0; //red
             }
             
+        }
+    }
+}
+
+void Block::rotation(Mat& img, Match match)
+{
+    for (int row = 0; row < this->size; row++) {
+        for (int col = 0; col < this->size; col++) {
+            float theta = match.theta / 180.0 * pi;
+            int tmpCol = (int)(cos(theta) * col - sin(theta) * row + match.m_a) + this->startWidth;
+            int tmpRow = (int)(sin(theta) * col + cos(theta) * row + match.m_b) + this->startHeight;
+            if (tmpCol < img.cols && tmpRow < img.rows) {
+                img.at<Vec3b>(tmpRow, tmpCol)[0] = 0; //blue
+                img.at<Vec3b>(tmpRow, tmpCol)[1] = 255; //green
+                img.at<Vec3b>(tmpRow, tmpCol)[2] = 0; //red
+            }
+
         }
     }
 }
