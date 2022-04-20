@@ -102,10 +102,12 @@ void Block::computeColorHistogram(const Mat& img)
     cvtColor(imgBlock, imgHSV, COLOR_BGR2HSV);
     int hBins = 50, sBins = 60;
     int histSize[] = { hBins,sBins };
+
     // hue varies from 0 to 179, saturation from 0 to 255
     float hRanges[] = { 0, 180 };
     float sRanges[] = { 0, 256 };
     const float* ranges[] = { hRanges, sRanges };
+
     // Use the 0-th and 1-st channels
     int channels[] = { 0, 1 };
     calcHist(&imgHSV, 1, channels, Mat(), hsvHist, 2, histSize, ranges, true, false);
