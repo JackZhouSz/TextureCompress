@@ -26,16 +26,19 @@ public:
     int getIndex() { return index; }
     int getStartHeight() { return startHeight; }
     int getStartWidth() { return startWidth; }
+    Mat getHist() { return hsvHist; }
 
     void setColor(Mat& img, Vec3f color);
     void affineDeformation(Mat& img, Match match);
     void rotation(Mat& img, Match match);
+    void computeColorHistogram(const Mat& img);
 
 private:
     int index;
     int size;
     int startHeight;
     int startWidth;
+    Mat hsvHist;
     //vector<Match> matchList;
 };
 
@@ -43,9 +46,9 @@ void Block::setColor(Mat& img, Vec3f color)
 {
     for (int row = this->startHeight; row < this->startHeight + this->size; row++) {
         for (int col = this->startWidth; col < this->startWidth + this->size; col++) {
-            img.at<Vec3b>(row, col)[0] = color[0]; //blue
-            img.at<Vec3b>(row, col)[1] = color[1]; //green
-            img.at<Vec3b>(row, col)[2] = color[2]; //red
+            //img.at<Vec3b>(row, col)[0] = color[0]; //blue
+            //img.at<Vec3b>(row, col)[1] = color[1]; //green
+            img.at<Vec3b>(row, col)[2] = 50; //red
         }
     }
 }
@@ -81,6 +84,33 @@ void Block::rotation(Mat& img, Match match)
 
         }
     }
+}
+
+void Block::computeColorHistogram(const Mat& img)
+{
+    Mat imgBlock(this->size, this->size, CV_8UC3);
+
+    for (int i = 0; i < imgBlock.rows; i++)
+    {
+        for (int j = 0; j < imgBlock.cols; j++)
+        {
+            imgBlock.at<Vec3b>(i, j) = img.at<Vec3b>(this->getStartHeight() + i, this->getStartWidth() + j);
+        }
+    }
+
+    Mat imgHSV;
+    cvtColor(imgBlock, imgHSV, COLOR_BGR2HSV);
+    int hBins = 50, sBins = 60;
+    int histSize[] = { hBins,sBins };
+    // hue varies from 0 to 179, saturation from 0 to 255
+    float hRanges[] = { 0, 180 };
+    float sRanges[] = { 0, 256 };
+    const float* ranges[] = { hRanges, sRanges };
+    // Use the 0-th and 1-st channels
+    int channels[] = { 0, 1 };
+    calcHist(&imgHSV, 1, channels, Mat(), hsvHist, 2, histSize, ranges, true, false);
+    normalize(hsvHist, imgHSV, 0, 1, NORM_MINMAX, -1, Mat());
+
 }
 
 #endif 

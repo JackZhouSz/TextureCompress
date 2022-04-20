@@ -9,14 +9,17 @@ using namespace cv;
 int blockSize = 32;
 vector<Block*> blocks;
 vector<Vec2b> seedPoints;
+vector<Block*> seedBlocks;
+
 
 int main(int argc, char* argv[]) {
 
     // load image
-    const char* imagename = "F:\\NewPro\\TextureCompress\\Test\\t2.png";//此处为你自己的图片路径
-    Mat img = imread(imagename, 1);
+    const string imageName = "F:\\NewPro\\TextureCompress\\Test\\4.png";
+
+    Mat img = imread(imageName, 1);
     if (img.empty()) {
-        fprintf(stderr, "Can not load image %s\n", imagename);
+        fprintf(stderr, "Can not load image %s\n", imageName);
         return -1;
     }
 
@@ -26,53 +29,68 @@ int main(int argc, char* argv[]) {
 
     // generate blocks
     int blockIndex = 0;
-    for (int row = 0; row < height; row+=blockSize) {
-        for (int col = 0; col < width; col+=blockSize) {
+    for (int row = 0; row + blockSize <= height; row += blockSize) {
+        for (int col = 0; col + blockSize <= width; col += blockSize) {
             Block* tmpBlock = new Block(blockIndex++, blockSize, row, col);
+            tmpBlock->computeColorHistogram(img);
             blocks.push_back(tmpBlock);
         }
     }
 
+    int seedBlockIndex = 0;
     // generate seedPoints
-    for (int row = 0; row < height; row += blockSize/4) {
-        for (int col = 0; col < width; col += blockSize/4) {
-            seedPoints.push_back(Vec2b(row, col));
-            //img.at<Vec3b>(row, col)[0] = 0; //blue
-            //img.at<Vec3b>(row, col)[1] = 0; //green
-            //img.at<Vec3b>(row, col)[2] = 255; //red
+    for (int row = 0; row + blockSize <= height; row += blockSize/4) {
+        for (int col = 0; col + blockSize <= width; col += blockSize/4) {
+            Block* tmpBlock = new Block(seedBlockIndex++, blockSize, row, col);
+            tmpBlock->computeColorHistogram(img);
+            seedBlocks.push_back(tmpBlock);
         }
     }
 
     // HOG feature
-    Mat imgTest(blockSize, blockSize, CV_8UC3);
-    namedWindow("Test");
-    for (int i = 0; i < imgTest.rows; i++)        //遍历每一行每一列并设置其像素值
+    //Mat imgTest(blockSize, blockSize, CV_8UC3);
+    //namedWindow("Test");
+    //for (int i = 0; i < imgTest.rows; i++)        //遍历每一行每一列并设置其像素值
+    //{
+    //    for (int j = 0; j < imgTest.cols; j++)
+    //    {
+    //        imgTest.at<Vec3b>(i, j) = img.at<Vec3b>(blocks[196]->getStartHeight() + i, blocks[196]->getStartWidth() + j);
+    //    }
+    //}
+
+    //imshow("Test", imgTest);   //窗口中显示图像
+    //imwrite("F:\\NewPro\\TextureCompress\\Test\\test.jpg", imgTest);    //保存生成的图片
+    //waitKey(5000); //等待5000ms后窗口自动关闭
+    //getchar();
+
+    for (int i = 0; i < blocks.size(); i++)
     {
-        for (int j = 0; j < imgTest.cols; j++)
-        {
-            imgTest.at<Vec3b>(i, j) = img.at<Vec3b>(blocks[196]->getStartHeight() + i, blocks[196]->getStartWidth() + j);
+        int compare_method = 0; //Correlation ( CV_COMP_CORREL )
+        double simi = compareHist(blocks[170]->getHist(), blocks[i]->getHist(), compare_method);
+        cout << i << " simi:" << simi << endl;
+        if (simi > 0.3) {
+            Vec3f Color = Vec3f(0, 0, 255.0); //bgr 0-255
+            blocks[i]->setColor(img, Color);
         }
+
+
     }
 
-    imshow("Test", imgTest);   //窗口中显示图像
-    imwrite("F:\\NewPro\\TextureCompress\\Test\\灰度图.jpg", imgTest);    //保存生成的图片
-    waitKey(5000); //等待5000ms后窗口自动关闭
-    getchar();
-
-
     //Vec3f Color = Vec3f(0, 0, 255.0); //bgr 0-255
-    //blocks[196]->setColor(img, Color);
+    //blocks[14]->setColor(img, Color);
 
     //Match match(2.0f,1.0f,0.0f,5.0f,100.0f,0.0f,-60.0f);
     //blocks[196]->affineDeformation(img, match);
     //blocks[196]->rotation(img, match);
 
 
-    //imshow("image", img);
-    //waitKey();
+    imshow("image", img);
+    waitKey();
 
     return 0;
 }
+
+
 
 
 //#include<opencv2/opencv.hpp>
