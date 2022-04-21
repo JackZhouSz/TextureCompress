@@ -43,6 +43,7 @@ int main(int argc, char* argv[]) {
         cout << testTheta << endl;
     }
     
+    // create kit
 
     // generate seedPoints
     //int seedBlockIndex = 0;
