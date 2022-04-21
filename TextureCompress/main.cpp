@@ -15,7 +15,7 @@ vector<Block*> seedBlocks;
 int main(int argc, char* argv[]) {
 
     // load image
-    const string imageName = "F:\\NewPro\\TextureCompress\\Test\\t3.png";
+    const string imageName = "F:\\NewPro\\TextureCompress\\Test\\t10.png";
 
     Mat img = imread(imageName, 1);
     if (img.empty()) {
@@ -37,26 +37,25 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    int seedBlockIndex = 0;
-    // generate seedPoints
-    for (int row = 0; row + blockSize <= height; row += blockSize/4) {
-        for (int col = 0; col + blockSize <= width; col += blockSize/4) {
-            Block* tmpBlock = new Block(seedBlockIndex++, blockSize, row, col);
-            tmpBlock->computeColorHistogram(img);
-            seedBlocks.push_back(tmpBlock);
-        }
-    }
+    for (int i = 0; i < 9; i++) {
+        float testTheta = guessTheta(blocks[0]->getHog(), blocks[i]->getHog());
 
-    // HOG feature
-    img.convertTo(img, CV_32F, 1 / 255.0);
-    // calculate gradients gx gy
-    Mat gx, gy, mag, angle;
-    Sobel(img, gx, CV_32F, 1, 0, 1);
-    Sobel(img, gy, CV_32F, 0, 1, 1);
-    // calculate gradient magnitude and direction
-    cartToPolar(gx, gy, mag, angle, 1);
-    imshow("image", mag);
-    waitKey();
+        cout << testTheta << endl;
+    }
+    
+
+    // generate seedPoints
+    //int seedBlockIndex = 0;
+    //for (int row = 0; row + blockSize <= height; row += blockSize/4) {
+    //    for (int col = 0; col + blockSize <= width; col += blockSize/4) {
+    //        Block* tmpBlock = new Block(seedBlockIndex++, blockSize, row, col);
+    //        tmpBlock->computeColorHistogram(img);
+    //        seedBlocks.push_back(tmpBlock);
+    //    }
+    //}
+
+
+    
 
     //Mat imgTest(blockSize, blockSize, CV_8UC3);
     //namedWindow("Test");
@@ -73,16 +72,19 @@ int main(int argc, char* argv[]) {
     //waitKey(5000); //等待5000ms后窗口自动关闭
     //getchar();
 
-    //for (int i = 0; i < blocks.size(); i++)
+    // color histogram simi
+    //for (int i = 0; i < seedBlocks.size(); i++)
     //{
     //    int compare_method = 0; //Correlation ( CV_COMP_CORREL )
-    //    double simi = compareHist(blocks[0]->getHist(), blocks[i]->getHist(), compare_method);
+    //    double simi = compareHist(blocks[0]->getHist(), seedBlocks[i]->getHist(), compare_method);
     //    cout << i << " simi:" << simi << endl;
-    //    if (simi > 0.995) {
+    //    if (simi > 0.997) {
     //        Vec3f Color = Vec3f(0, 0, 255.0); //bgr 0-255
-    //        blocks[i]->setColor(img, Color);
+    //        seedBlocks[i]->setColor(img, Color);
     //    }
     //}
+    //imshow("image", img);
+    //waitKey();
 
     //Vec3f Color = Vec3f(0, 0, 255.0); //bgr 0-255
     //blocks[0]->setColor(img, Color);
@@ -92,8 +94,7 @@ int main(int argc, char* argv[]) {
     ////blocks[196]->rotation(img, match);
 
 
-    //imshow("image", img);
-    //waitKey();
+    
 
     return 0;
 }

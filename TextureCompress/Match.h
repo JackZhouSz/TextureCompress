@@ -1,5 +1,5 @@
-#ifndef MATCH
-#define MATCH
+#ifndef MATCH_H
+#define MATCH_H
 
 // ===============================
 // define affine deformation

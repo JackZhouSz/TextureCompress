@@ -1,5 +1,5 @@
-#ifndef BLOCK
-#define BLOCK
+#ifndef BLOCK_H
+#define BLOCK_H
 
 // ===============================
 // define image block
@@ -9,6 +9,7 @@
 #include <iostream>
 #include <cmath>
 #include "Match.h"
+#include "Hog.h"
 
 #define pi 3.14159
 
@@ -16,7 +17,7 @@ using namespace cv;
 
 class Block {
 public:
-    Block(int _index,int _size,int _startHeight,int _startWidth)
+    Block(int _index, int _size, int _startHeight, int _startWidth)
     {
         index = _index;
         size = _size;
@@ -27,6 +28,7 @@ public:
     int getStartHeight() { return startHeight; }
     int getStartWidth() { return startWidth; }
     Mat getHist() { return hsvHist; }
+    Mat getHog() { return oriHist; }
 
     void setColor(Mat& img, Vec3f color);
     void affineDeformation(Mat& img, Match match);
@@ -39,6 +41,7 @@ private:
     int startHeight;
     int startWidth;
     Mat hsvHist;
+    Mat oriHist;
     //vector<Match> matchList;
 };
 
@@ -64,7 +67,7 @@ void Block::affineDeformation(Mat& img, Match match)
                 img.at<Vec3b>(tmpRow, tmpCol)[1] = 255; //green
                 img.at<Vec3b>(tmpRow, tmpCol)[2] = 0; //red
             }
-            
+
         }
     }
 }
@@ -113,8 +116,8 @@ void Block::computeColorHistogram(const Mat& img)
     calcHist(&imgHSV, 1, channels, Mat(), hsvHist, 2, histSize, ranges, true, false);
     normalize(hsvHist, imgHSV, 0, 1, NORM_MINMAX, -1, Mat());
 
+    oriHist = Hog(imgBlock);
 }
 
 #endif 
-
 
