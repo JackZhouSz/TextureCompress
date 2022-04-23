@@ -3,19 +3,30 @@
 #include <cmath>
 #include "Block.h"
 
+//   klt
+#include "pnmio.h"
+#include "klt.h"
+
 using namespace std;
 using namespace cv;
+
 
 int blockSize = 32;
 vector<Block*> blocks;
 vector<Vec2b> seedPoints;
 vector<Block*> seedBlocks;
 
+int RunExample()
+{
+
+}
 
 int main(int argc, char* argv[]) {
 
+
+
     // load image
-    const string imageName = "F:\\NewPro\\TextureCompress\\Test\\t10.png";
+    const string imageName = "D:\\NewPro\\TextureCompress\\Test\\t10.png";
 
     Mat img = imread(imageName, 1);
     if (img.empty()) {
@@ -43,7 +54,7 @@ int main(int argc, char* argv[]) {
         cout << testTheta << endl;
     }
     
-    // create kit
+    // create kit 
 
     // generate seedPoints
     //int seedBlockIndex = 0;
@@ -97,7 +108,7 @@ int main(int argc, char* argv[]) {
 
     
 
-    return 0;
+          return 0;
 }
 
 
