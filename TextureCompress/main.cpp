@@ -18,7 +18,7 @@ vector<Block*> seedBlocks;
 
 int RunExample()
 {
-
+    return 0;
 }
 
 int main(int argc, char* argv[]) {
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
 
 
     // load image
-    const string imageName = "D:\\NewPro\\TextureCompress\\Test\\t10.png";
+    const string imageName = "..\\Resource\\t10.png";
 
     Mat img = imread(imageName, 1);
     if (img.empty()) {

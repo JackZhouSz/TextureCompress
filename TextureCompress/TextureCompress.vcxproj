@@ -143,19 +143,25 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="convolve.cpp" />
     <ClCompile Include="error.cpp" />
     <ClCompile Include="klt.cpp" />
+    <ClCompile Include="klt_util.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pnmio.cpp" />
+    <ClCompile Include="pyramid.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="base.h" />
     <ClInclude Include="Block.h" />
+    <ClInclude Include="convolve.h" />
     <ClInclude Include="error.h" />
     <ClInclude Include="Hog.h" />
     <ClInclude Include="klt.h" />
+    <ClInclude Include="klt_util.h" />
     <ClInclude Include="Match.h" />
     <ClInclude Include="pnmio.h" />
+    <ClInclude Include="pyramid.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
