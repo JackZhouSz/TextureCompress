@@ -4,6 +4,8 @@
 #include "Block.h"
 
 //   klt
+#include "error.h"
+#include "base.h"
 #include "pnmio.h"
 #include "klt.h"
 
@@ -16,14 +18,60 @@ vector<Block*> blocks;
 vector<Vec2b> seedPoints;
 vector<Block*> seedBlocks;
 
+uchar* imgRead(const string imgPath, int* ncols, int* nrows);
+
+
 int RunExample()
 {
+    uchar* img1, * img2;
+    KLT_TrackingContext tc;
+    KLT_FeatureList fl;
+    int nFeatures = 100;
+    int ncols, nrows;
+    int i;
+
+    tc = KLTCreateTrackingContext();
+    //KLTPrintTrackingContext(tc);
+    fl = KLTCreateFeatureList(nFeatures);
+
+    img1 = imgRead("..\\Resource\\img1.png", &ncols, &nrows);
+    img2 = imgRead("..\\Resource\\img2.png", &ncols, &nrows);
+
+    //img1 = pgmReadFile("..\\Resource\\img1.pgm", NULL, &ncols, &nrows);
+    //img2 = pgmReadFile("..\\Resource\\img2.pgm", NULL, &ncols, &nrows);
+
+    KLTSelectGoodFeatures(tc, img1, ncols, nrows, fl);
+
+    printf("\nIn first image:\n");
+    for (i = 0; i < fl->nFeatures; i++) {
+        printf("Feature #%d:  (%f,%f) with value of %d\n",
+            i, fl->feature[i]->x, fl->feature[i]->y,
+            fl->feature[i]->val);
+    } 
+
+    KLTWriteFeatureListToPPM(fl, img1, ncols, nrows, "..\\Resource\\feat1.ppm");
+    KLTWriteFeatureList(fl, "feat1.txt", "%3d");
+
+    KLTTrackFeatures(tc, img1, img2, ncols, nrows, fl);
+
+    printf("\nIn second image:\n");
+    for (i = 0; i < fl->nFeatures; i++) {
+        printf("Feature #%d:  (%f,%f) with value of %d\n",
+            i, fl->feature[i]->x, fl->feature[i]->y,
+            fl->feature[i]->val);
+    }
+
+    KLTWriteFeatureListToPPM(fl, img2, ncols, nrows, "..\\Resource\\feat2.ppm");
+    //KLTWriteFeatureList(fl, "..\\Resource\\feat2.fl", NULL);      /* binary file */
+    //KLTWriteFeatureList(fl, "..\\Resource\\feat2.txt", "%5.1f");  /* text file   */
+
     return 0;
 }
 
 int main(int argc, char* argv[]) {
 
 
+    RunExample();
 
     // load image
     const string imageName = "..\\Resource\\t10.png";
@@ -37,6 +85,8 @@ int main(int argc, char* argv[]) {
     int height = img.rows;
     int width = img.cols;
     int channels = img.channels();
+
+
 
     // generate blocks
     int blockIndex = 0;
@@ -111,75 +161,33 @@ int main(int argc, char* argv[]) {
           return 0;
 }
 
+uchar* imgRead(const string imgPath, int* ncols, int* nrows)
+{
+    uchar* ptr;
+    Mat img = imread(imgPath, 1);
+    if (img.empty()) {
+        fprintf(stderr, "Can not load image %s\n", imgPath);
+        return NULL;
+    }
+    *ncols = img.cols;
+    *nrows = img.rows;
+    ptr = (uchar*)malloc((*ncols) * (*nrows) * sizeof(char));
+    if (ptr == NULL)
+        KLTError("(imgRead) Memory not allocated");
 
+    Mat imgGray;
+    cvtColor(img, imgGray, COLOR_BGR2GRAY);
 
-
-//#include<opencv2/opencv.hpp>
-//#include<math.h>
-//using namespace cv;
-//
-//Mat src, gray, dst, harrisRspImg;
-//double harrisMinRsp;
-//double harrisMaxRsp;
-//int qualityLevel = 30;
-//int maxCount = 100;
-//void cornerTrack(int, void*);
-//
-//int main()
-//{
-//    src = imread("F:\\NewPro\\TextureCompress\\Test\\t2.png");
-//    if (src.empty())
-//    {
-//        printf("can not load image \n");
-//        return -1;
-//    }
-//    namedWindow("input", WINDOW_AUTOSIZE);
-//    imshow("input", src);
-//    cvtColor(src, gray, COLOR_BGR2GRAY);
-//
-//    float k = 0.04;
-//    dst = Mat::zeros(src.size(), CV_32FC(6));
-//    harrisRspImg = Mat::zeros(src.size(), CV_32FC1);
-//    //计算角点检测的图像块的特征值和特征向量
-//    cornerEigenValsAndVecs(gray, dst, 3, 3, 4);
-//    for (int r = 0; r < dst.rows; r++)
-//    {
-//        for (int c = 0; c < dst.cols; c++)
-//        {
-//            double lambda1 = dst.at<Vec6f>(r, c)[0];
-//            double lambda2 = dst.at<Vec6f>(r, c)[1];
-//            harrisRspImg.at<float>(r, c) = lambda1 * lambda2 - k * pow((lambda1 + lambda2), 2);
-//
-//        }
-//    }
-//    minMaxLoc(harrisRspImg, &harrisMinRsp, &harrisMinRsp, 0, 0, Mat());
-//
-//    namedWindow("output", WINDOW_AUTOSIZE);
-//    createTrackbar("QualityValue", "output", &qualityLevel, maxCount, cornerTrack);
-//    cornerTrack(0, 0);
-//    waitKey(0);
-//    return 0;
-//}
-//
-//void cornerTrack(int, void*)
-//{
-//    if (qualityLevel < 10)
-//    {
-//        qualityLevel = 10;
-//    }
-//    Mat showImage = src.clone();
-//    float t = harrisMinRsp + ((((double)qualityLevel) / maxCount) * (harrisMaxRsp - harrisMinRsp));
-//    for (int r = 0; r < src.rows; r++)
-//    {
-//        for (int c = 0; c < src.cols; c++)
-//        {
-//            float value = harrisRspImg.at<float>(r, c);
-//            if (value > t)
-//            {
-//                circle(showImage, Point(c, r), 2, Scalar(0, 255, 255), 2, 8, 0);
-//            }
-//        }
-//    }
-//    imshow("output", showImage);
-//}
+    int index = 0;
+    uchar* tmpptr = ptr;
+    for (int i = 0; i < *nrows; i++)
+    {
+        for (int j = 0; j < *ncols; j++)
+        {
+            *tmpptr = imgGray.at<uchar>(i, j);
+            tmpptr++;
+        }
+    }
+    return ptr;
+}
 

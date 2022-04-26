@@ -36,6 +36,18 @@
     <ClCompile Include="pyramid.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="selectGoodFeatures.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="storeFeatures.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="trackFeatures.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="writeFeatures.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Block.h">

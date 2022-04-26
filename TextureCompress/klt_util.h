@@ -17,7 +17,7 @@ void _KLTFreeFloatImage(_KLT_FloatImage);
 
 void _KLTPrintSubFloatImage(_KLT_FloatImage floatimg, int x0, int y0, int width, int height);
 
-void _KLTWriteFloatImageToPGM(_KLT_FloatImage img, char* filename);
+void _KLTWriteFloatImageToPGM(_KLT_FloatImage img, const char* filename);
 
 /* for affine mapping */
 void _KLTWriteAbsFloatImageToPGM(_KLT_FloatImage img, char* filename, float scale);

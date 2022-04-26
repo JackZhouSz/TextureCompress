@@ -80,7 +80,7 @@ void _KLTPrintSubFloatImage(_KLT_FloatImage floatimg, int x0, int y0, int width,
  * _KLTWriteFloatImageToPGM
  */
 
-void _KLTWriteFloatImageToPGM(_KLT_FloatImage img, char* filename)
+void _KLTWriteFloatImageToPGM(_KLT_FloatImage img, const char* filename)
 {
 	int npixs = img->ncols * img->nrows;
 	float mmax = -999999.9f, mmin = 999999.9f;

@@ -16,11 +16,11 @@
 /**********
 * used for reading from/writing to files
 */
-uchar* pgmReadFile(char* fname, uchar* img, int* ncols, int* nrows);
+uchar* pgmReadFile(const char* fname, uchar* img, int* ncols, int* nrows);
 
-void pgmWriteFile(char* fname, uchar* img, int ncols, int nrows);
+void pgmWriteFile(const char* fname, uchar* img, int ncols, int nrows);
 
-void ppmWriteFileRGB(char* fname, uchar* redimg, uchar* greenimg, uchar* blueimg, int ncols, int nrows);
+void ppmWriteFileRGB(const char* fname, uchar* redimg, uchar* greenimg, uchar* blueimg, int ncols, int nrows);
 
 /**********
  * used for communicating with stdin and stdout

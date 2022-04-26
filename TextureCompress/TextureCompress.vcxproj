@@ -150,6 +150,10 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pnmio.cpp" />
     <ClCompile Include="pyramid.cpp" />
+    <ClCompile Include="selectGoodFeatures.cpp" />
+    <ClCompile Include="storeFeatures.cpp" />
+    <ClCompile Include="trackFeatures.cpp" />
+    <ClCompile Include="writeFeatures.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="base.h" />

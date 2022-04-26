@@ -15,6 +15,7 @@
 
 #define LENGTH 80
 
+
 /*********************************************************************/
 
 static void _getNextString(FILE* fp, char* line)
@@ -170,7 +171,7 @@ uchar* pgmRead(FILE* fp, uchar* img, int* ncols, int* nrows)
  *
  * NOTE:  If img is NULL, memory is allocated.
  */
-uchar* pgmReadFile(char* fname, uchar* img, int* ncols, int* nrows)
+uchar* pgmReadFile(const char* fname, uchar* img, int* ncols, int* nrows)
 {
 	uchar* ptr;
 	FILE* fp;
@@ -211,7 +212,7 @@ void pgmWrite(FILE* fp, uchar* img, int ncols, int nrows)
 /*********************************************************************
  * pgmWriteFile
  */
-void pgmWriteFile(char* fname, uchar* img, int ncols, int nrows)
+void pgmWriteFile(const char* fname, uchar* img, int ncols, int nrows)
 {
 	FILE* fp;
 
@@ -253,7 +254,7 @@ void ppmWrite(FILE* fp, uchar* redimg, uchar* greenimg, uchar* blueimg, int ncol
  * ppmWriteFileRGB
  */
 
-void ppmWriteFileRGB(char* fname, uchar* redimg, uchar* greenimg, uchar* blueimg, int ncols, int nrows)
+void ppmWriteFileRGB(const char* fname, uchar* redimg, uchar* greenimg, uchar* blueimg, int ncols, int nrows)
 {
 	FILE* fp;
 
