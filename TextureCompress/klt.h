@@ -29,7 +29,9 @@ typedef unsigned char KLT_PixelType;
 #define KLT_LARGE_RESIDUE    -5
 
 #include "klt_util.h" /* for affine mapping */
-
+#include "Block.h"
+#include <iostream>
+using namespace std;
 /*******************
  * Structures
  */
@@ -122,6 +124,7 @@ typedef struct {
  */
 
  /* Create */
+KLT_FeatureList initialAffineTrack(vector<Block*> blocks);
 KLT_TrackingContext KLTCreateTrackingContext(void);
 KLT_FeatureList KLTCreateFeatureList(
     int nFeatures);
@@ -130,6 +133,7 @@ KLT_FeatureHistory KLTCreateFeatureHistory(
 KLT_FeatureTable KLTCreateFeatureTable(
     int nFrames,
     int nFeatures);
+
 
 /* Free */
 void KLTFreeTrackingContext(

@@ -16,7 +16,8 @@
 #include "klt.h"
 #include "pyramid.h"
 #include "Block.h"
-
+#include <iostream>
+using namespace std;
 
 static const int mindist = 10; /* minimum distance between selected features */
 static const int window_size = 7;
@@ -171,6 +172,37 @@ KLT_FeatureList KLTCreateFeatureList(
     return(fl);
 }
 
+KLT_FeatureList initialAffineTrack(vector<Block*> blocks)
+{
+    int nBlocks = blocks.size();
+    KLT_FeatureList fl;
+    KLT_Feature first;
+    int nbytes = sizeof(KLT_FeatureListRec) +
+        nBlocks * sizeof(KLT_Feature) +
+        nBlocks * sizeof(KLT_FeatureRec);
+    int i;
+
+    /* Allocate memory for feature list */
+    fl = (KLT_FeatureList)malloc(nbytes);
+
+    /* Set parameters */
+    fl->nFeatures = nBlocks;
+
+    /* Set pointers */
+    fl->feature = (KLT_Feature*)(fl + 1);
+    first = (KLT_Feature)(fl->feature + nBlocks);
+    for (i = 0; i < nBlocks; i++) {
+        fl->feature[i] = first + i;
+        fl->feature[i]->x = blocks[i]->getStartWidth() + blocks[i]->getSize() / 2;
+        fl->feature[i]->y = blocks[i]->getStartHeight() + blocks[i]->getSize() / 2;
+        fl->feature[i]->val = 0;
+        fl->feature[i]->aff_img = NULL;           /* initialization fixed by Sinisa Segvic */
+        fl->feature[i]->aff_img_gradx = NULL;
+        fl->feature[i]->aff_img_grady = NULL;
+    }
+    /* Return feature list */
+    return(fl);
+}
 
 /*********************************************************************
  * KLTCreateFeatureHistory

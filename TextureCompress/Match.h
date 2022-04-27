@@ -6,26 +6,35 @@
 // ===============================
 
 #include <opencv2/opencv.hpp>
+using namespace cv;
 
 class Match {
 public:
-	Match(float _m_00, float _m_01, float _m_10, float _m_11, float _m_a, float _m_b,float _theta) {
-		m_00 = _m_00;
-		m_01 = _m_01;
-		m_10 = _m_10;
-		m_11 = _m_11;
-		m_a  =  _m_a;
-		m_b  =  _m_b;
-		theta = _theta;
-		m = cv::Mat::zeros(cv::Size(2, 3), CV_32FC1);
-		//m.at<float>(0, 0) = m_00;
+	Match(Point2f center,Point2f move,double angle,double scale) {
+
+        angle *= CV_PI / 180;
+        double alpha = std::cos(angle) * scale;
+        double beta = std::sin(angle) * scale;
+
+        M = cv::Mat::zeros(cv::Size(2, 3), CV_64F);
+        double* m = M.ptr<double>();
+
+        Point2f newCenter = center + move;
+
+        //angle 为顺时针旋转角度
+        m[0] = alpha;
+        m[1] = -beta;
+        m[2] = move.x * alpha - move.y * beta + (1 - alpha) * newCenter.x + beta * newCenter.y;
+        m[3] = beta;
+        m[4] = alpha;
+        m[5] = move.y * alpha + move.x * beta - beta * newCenter.x + (1 - alpha) * newCenter.y;
+
 
 	}
-	// M(p)=(m_00,m_01  (p_x  + (m_a
-	//		 m_10,m_11)	 p_y)    m_b)
-	float m_00, m_01, m_10, m_11, m_a, m_b; //affine deformation parameters
-	float theta;
-	cv::Mat m;
+    Mat getMatrix() { return M; }
+
+private:
+	Mat M;
 	
 };
 

@@ -48,43 +48,40 @@ void Block::setColor(Mat& img, Vec3f color)
         for (int col = this->startWidth; col < this->startWidth + this->size; col++) {
             //img.at<Vec3b>(row, col)[0] = color[0]; //blue
             //img.at<Vec3b>(row, col)[1] = color[1]; //green
-            img.at<Vec3b>(row, col)[2] = 50; //red
+            img.at<Vec3b>(row, col)[2] = 200; //red
         }
     }
+}
+
+void Block::addMatch(Point2f move, double angle, double scale)
+{
+    //Match(Point2f center, Point2f move, double angle, double scale) 
+    Point2f center= Point2f(this->getStartWidth() + this->getSize() * 1.0 / 2, this->getStartHeight() + this->getSize() * 1.0 / 2);
+    Match m(center, move, angle, scale);
+    this->matchList.push_back(m);
 }
 
 void Block::affineDeformation(Mat& img, Match match)
 {
-    for (int row = 0; row < this->size; row++) {
-        for (int col = 0; col < this->size; col++) {
-            int tmpCol = (int)(match.m_00 * col + match.m_01 * row + match.m_a) + this->startWidth;
-            int tmpRow = (int)(match.m_10 * col + match.m_11 * row + match.m_b) + this->startHeight;
-            if (tmpCol < img.cols && tmpRow < img.rows) {
-                img.at<Vec3b>(tmpRow, tmpCol)[0] = 0; //blue
-                img.at<Vec3b>(tmpRow, tmpCol)[1] = 255; //green
-                img.at<Vec3b>(tmpRow, tmpCol)[2] = 0; //red
-            }
+    Mat M = match.getMatrix();
+    double* m = M.ptr<double>();
 
+    for (int row = this->getStartHeight(); row < this->getStartHeight() + this->getSize(); row++) {
+        for (int col = this->getStartWidth(); col < this->getStartWidth() + this->getSize(); col++) {
+            int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
+            int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
+            /*int tmpCol = (int)(cos(theta) * col - sin(theta) * row + match.m_a) + this->startWidth;
+            int tmpRow = (int)(sin(theta) * col + cos(theta) * row + match.m_b) + this->startHeight;*/
+            if (tmpCol < img.cols && tmpCol >= 0 && tmpRow < img.rows && tmpRow >= 0) {
+                //img.at<Vec3b>(tmpRow, tmpCol)[0] = 0; //blue
+                img.at<Vec3b>(tmpRow, tmpCol)[1] = 200; //green
+                //img.at<Vec3b>(tmpRow, tmpCol)[2] = 0; //red
+            }
         }
     }
 }
 
-void Block::rotation(Mat& img, Match match)
-{
-    for (int row = 0; row < this->size; row++) {
-        for (int col = 0; col < this->size; col++) {
-            float theta = match.theta / 180.0 * pi;
-            int tmpCol = (int)(cos(theta) * col - sin(theta) * row + match.m_a) + this->startWidth;
-            int tmpRow = (int)(sin(theta) * col + cos(theta) * row + match.m_b) + this->startHeight;
-            if (tmpCol < img.cols && tmpRow < img.rows) {
-                img.at<Vec3b>(tmpRow, tmpCol)[0] = 0; //blue
-                img.at<Vec3b>(tmpRow, tmpCol)[1] = 255; //green
-                img.at<Vec3b>(tmpRow, tmpCol)[2] = 0; //red
-            }
 
-        }
-    }
-}
 
 void Block::computeColorHistogram(const Mat& img)
 {

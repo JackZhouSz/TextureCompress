@@ -13,6 +13,7 @@
 #define pi 3.14159
 
 using namespace cv;
+using namespace std;
 
 class Block {
 public:
@@ -24,15 +25,17 @@ public:
         startWidth = _startWidth;
     }
     int getIndex() { return index; }
+    int getSize() { return size; }
     int getStartHeight() { return startHeight; }
     int getStartWidth() { return startWidth; }
     Mat getHist() { return hsvHist; }
     Mat getHog() { return oriHist; }
+    Match getMatch(int index) { return matchList[index]; }
 
     void setColor(Mat& img, Vec3f color);
     void affineDeformation(Mat& img, Match match);
-    void rotation(Mat& img, Match match);
     void computeColorHistogram(const Mat& img);
+    void addMatch(Point2f move, double angle, double scale);
 
 private:
     int index;
@@ -41,7 +44,7 @@ private:
     int startWidth;
     Mat hsvHist;
     Mat oriHist;
-    //vector<Match> matchList;
+    vector<Match> matchList;
 };
 
 Mat Hog(const Mat& img);

@@ -42,22 +42,39 @@ typedef enum { SELECTING_ALL, REPLACING_SOME } selectionMode;
  * [a b1 b2 c d] or [a b2 b1 c d].
  */
 
-#define SWAP3(list, i, j)               \
-{register int *pi, *pj, tmp;            \
-     pi=list+3*(i); pj=list+3*(j);      \
-                                        \
-     tmp=*pi;    \
-     *pi++=*pj;  \
-     *pj++=tmp;  \
-                 \
-     tmp=*pi;    \
-     *pi++=*pj;  \
-     *pj++=tmp;  \
-                 \
-     tmp=*pi;    \
-     *pi=*pj;    \
-     *pj=tmp;    \
+void SWAP3(int* list, int i, int j)
+{
+    int* Pi, * Pj, tmp;            \
+        Pi = list + 3 * (i); Pj = list + 3 * (j);      \
+        \
+        tmp = *Pi;    \
+        * Pi++ = *Pj;  \
+        * Pj++ = tmp;  \
+        \
+        tmp = *Pi;    \
+        * Pi++ = *Pj;  \
+        * Pj++ = tmp;  \
+        \
+        tmp = *Pi;    \
+        * Pi = *Pj;    \
+        * Pj = tmp;    \
 }
+//#define SWAP3(list, i, j)               \
+//{register int *pi, *pj, tmp;            \
+//     pi=list+3*(i); pj=list+3*(j);      \
+//                                        \
+//     tmp=*pi;    \
+//     *pi++=*pj;  \
+//     *pj++=tmp;  \
+//                 \
+//     tmp=*pi;    \
+//     *pi++=*pj;  \
+//     *pj++=tmp;  \
+//                 \
+//     tmp=*pi;    \
+//     *pi=*pj;    \
+//     *pj=tmp;    \
+//}
 
 void _quicksort(int* pointlist, int n)
 {
@@ -94,7 +111,7 @@ void _quicksort(int* pointlist, int n)
         }
     }
 }
-#undef SWAP3
+//#undef SWAP3
 
 
 /*********************************************************************/

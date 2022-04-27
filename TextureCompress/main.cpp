@@ -25,7 +25,7 @@ int RunExample()
 {
     uchar* img1, * img2;
     KLT_TrackingContext tc;
-    KLT_FeatureList fl;
+    KLT_FeatureList fl,testFl;
     int nFeatures = 100;
     int ncols, nrows;
     int i;
@@ -38,8 +38,10 @@ int RunExample()
 
 
 
-    img1 = imgRead("..\\Resource\\img1.png", &ncols, &nrows);
-    img2 = imgRead("..\\Resource\\img2.png", &ncols, &nrows);
+    img1 = imgRead("..\\Resource\\t11.png", &ncols, &nrows);
+    //img2 = imgRead("..\\Resource\\img2.png", &ncols, &nrows);
+
+   /* testFl = initialAffineTrack(blocks);
 
 
     KLTSelectGoodFeatures(tc, img1, ncols, nrows, fl);
@@ -52,19 +54,19 @@ int RunExample()
     } 
 
     KLTWriteFeatureListToPPM(fl, img1, ncols, nrows, "..\\Resource\\feat1.ppm");
-    KLTWriteFeatureList(fl, "feat1.txt", "%3d");
+    KLTWriteFeatureList(fl, "feat1.txt", "%3d");*/
 
-    KLTTrackFeatures(tc, img1, img2, ncols, nrows, fl);
-    KLTTrackFeatures(tc, img1, img2, ncols, nrows, fl);
+    //KLTTrackFeatures(tc, img1, img2, ncols, nrows, fl);
+    //KLTTrackFeatures(tc, img1, img2, ncols, nrows, fl);
 
-    printf("\nIn second image:\n");
+    /*printf("\nIn second image:\n");
     for (i = 0; i < fl->nFeatures; i++) {
         printf("Feature #%d:  (%f,%f) with value of %d\n",
             i, fl->feature[i]->x, fl->feature[i]->y,
             fl->feature[i]->val);
     }
 
-    KLTWriteFeatureListToPPM(fl, img2, ncols, nrows, "..\\Resource\\feat2.ppm");
+    KLTWriteFeatureListToPPM(fl, img2, ncols, nrows, "..\\Resource\\feat2.ppm");*/
     //KLTWriteFeatureList(fl, "..\\Resource\\feat2.fl", NULL);      /* binary file */
     //KLTWriteFeatureList(fl, "..\\Resource\\feat2.txt", "%5.1f");  /* text file   */
 
@@ -76,18 +78,6 @@ int main(int argc, char* argv[]) {
 
     RunExample();
 
-    // load image
-    const string imageName = "..\\Resource\\t10.png";
-
-    Mat img = imread(imageName, 1);
-    if (img.empty()) {
-        fprintf(stderr, "Can not load image %s\n", imageName);
-        return -1;
-    }
-
-    int height = img.rows;
-    int width = img.cols;
-    int channels = img.channels();
 
 
     //Mat imgTest(blockSize, blockSize, CV_8UC3);
@@ -144,32 +134,92 @@ uchar* imgRead(const string imgPath, int* ncols, int* nrows)
     // generate blocks
     int blockIndex = 0;
     for (int row = 0; row + blockSize <= img.rows; row += blockSize) {
-        for (int col = 0; col + blockSize <= img.rows; col += blockSize) {
+        for (int col = 0; col + blockSize <= img.cols; col += blockSize) {
             Block* tmpBlock = new Block(blockIndex++, blockSize, row, col);
             tmpBlock->computeColorHistogram(img);
             blocks.push_back(tmpBlock);
         }
     }
 
-    //for (int i = 0; i < 9; i++) {
-    //    float testTheta = guessTheta(blocks[0]->getHog(), blocks[i]->getHog());
-
-    //    cout << testTheta << endl;
-    //}
-
-    // create kit 
-
     // generate seedPoints
     int seedBlockIndex = 0;
     for (int row = 0; row + blockSize <= img.rows; row += blockSize/4) {
-        for (int col = 0; col + blockSize <= img.rows; col += blockSize/4) {
+        for (int col = 0; col + blockSize <= img.cols; col += blockSize/4) {
             Block* tmpBlock = new Block(seedBlockIndex++, blockSize, row, col);
             tmpBlock->computeColorHistogram(img);
             seedBlocks.push_back(tmpBlock);
         }
     }
 
-    *ncols = img.cols;
+
+    // color histogram simi
+    int index = 0;
+    for (int i = 0; i < seedBlocks.size(); i++)
+    {
+        int compare_method = 0; //Correlation ( CV_COMP_CORREL )
+        double simi = compareHist(blocks[0]->getHist(), seedBlocks[i]->getHist(), compare_method);
+       
+        if (simi > 0.998) {
+            cout << i << " simi:" << simi << endl;
+            float testTheta = guessTheta(blocks[0]->getHog(), seedBlocks[i]->getHog());
+            cout << "index "<<i<<" theta "<<testTheta << endl;
+            int scale = 1;
+            Point2f move = Point2f(seedBlocks[i]->getStartWidth() - blocks[0]->getStartWidth(),
+                seedBlocks[i]->getStartHeight() - blocks[0]->getStartHeight());
+            blocks[0]->addMatch(move, testTheta, scale);
+            blocks[0]->affineDeformation(img, blocks[0]->getMatch(index++));
+        }
+    }
+
+    imshow("image", img);
+    waitKey();
+    //int index = 196;
+
+    //Point2f center = Point2f(blocks[index]->getStartWidth() + blocks[index]->getSize() * 1.0 / 2, blocks[index]->getStartHeight() + blocks[index]->getSize() * 1.0 / 2);
+    //Mat rotationMat = getRotationMatrix2D(center, 45, 2); 
+    //double* m = rotationMat.ptr<double>();
+
+    //Vec3f Color = Vec3f(0, 0, 255.0); //bgr 0-255
+    //blocks[index]->setColor(img, Color);
+
+    //for (int row = blocks[index]->getStartHeight(); row < blocks[index]->getStartHeight()+blocks[index]->getSize(); row++) {
+    //    for (int col = blocks[index]->getStartWidth(); col < blocks[index]->getStartWidth()+blocks[index]->getSize(); col++) {
+    //        int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
+    //        int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
+    //        if (tmpCol < img.cols && tmpRow < img.rows) {
+    //            img.at<Vec3b>(tmpRow, tmpCol)[0] = 0; //blue
+    //            img.at<Vec3b>(tmpRow, tmpCol)[1] = 255; //green
+    //            img.at<Vec3b>(tmpRow, tmpCol)[2] = 0; //red
+    //        }
+    //    }
+    //}
+
+    //imshow("image", img);
+    //waitKey();
+// 
+   //Mat imgTest(img.rows,img.cols, CV_8UC3);
+   //namedWindow("Test");
+   //for (int i = 0; i < imgTest.rows; i++)        //遍历每一行每一列并设置其像素值
+   //{
+   //    for (int j = 0; j < imgTest.cols; j++)
+   //    {
+   //        imgTest.at<Vec3b>(i, j) = img.at<Vec3b>(blocks[196]->getStartHeight() + i, blocks[196]->getStartWidth() + j);
+   //    }
+   //}
+
+   //imshow("Test", imgTest);   //窗口中显示图像
+   //imwrite("..\\Resource\\test.jpg", imgTest);    //保存生成的图片
+   //waitKey();
+
+
+
+
+
+
+
+
+
+     *ncols = img.cols;
     *nrows = img.rows;
     ptr = (uchar*)malloc((*ncols) * (*nrows) * sizeof(char));
     if (ptr == NULL)
@@ -178,7 +228,6 @@ uchar* imgRead(const string imgPath, int* ncols, int* nrows)
     Mat imgGray;
     cvtColor(img, imgGray, COLOR_BGR2GRAY);
 
-    int index = 0;
     uchar* tmpptr = ptr;
     for (int i = 0; i < *nrows; i++)
     {
