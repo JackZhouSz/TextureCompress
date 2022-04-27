@@ -143,6 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Block.cpp" />
     <ClCompile Include="convolve.cpp" />
     <ClCompile Include="error.cpp" />
     <ClCompile Include="klt.cpp" />
@@ -160,7 +161,6 @@
     <ClInclude Include="Block.h" />
     <ClInclude Include="convolve.h" />
     <ClInclude Include="error.h" />
-    <ClInclude Include="Hog.h" />
     <ClInclude Include="klt.h" />
     <ClInclude Include="klt_util.h" />
     <ClInclude Include="Match.h" />

@@ -478,6 +478,7 @@ static int _trackFeature(
 	free(imgdiff);  free(gradx);  free(grady);
 
 	/* Return appropriate value */
+	// 返回该点是否成功找到匹配点
 	if (status == KLT_SMALL_DET)  return KLT_SMALL_DET;
 	else if (status == KLT_OOB)  return KLT_OOB;
 	else if (status == KLT_LARGE_RESIDUE)  return KLT_LARGE_RESIDUE;
@@ -1246,7 +1247,8 @@ void KLTTrackFeatures(
 {
 	_KLT_FloatImage tmpimg, floatimg1=nullptr, floatimg2;
 	_KLT_Pyramid pyramid1, pyramid1_gradx, pyramid1_grady,
-		pyramid2, pyramid2_gradx, pyramid2_grady;
+				 pyramid2, pyramid2_gradx, pyramid2_grady;
+
 	float subsampling = (float)tc->subsampling;
 	float xloc, yloc, xlocout, ylocout;
 	int val;
@@ -1330,24 +1332,23 @@ void KLTTrackFeatures(
 	if (tc->writeInternalImages) {
 		char fname[80];
 		for (i = 0; i < tc->nPyramidLevels; i++) {
-			sprintf(fname, "kltimg_tf_i%d.pgm", i);
+			sprintf(fname, "..\\Resource\\kltimg_tf_i%d.pgm", i);
 			_KLTWriteFloatImageToPGM(pyramid1->img[i], fname);
-			sprintf(fname, "kltimg_tf_i%d_gx.pgm", i);
+			sprintf(fname, "..\\Resource\\kltimg_tf_i%d_gx.pgm", i);
 			_KLTWriteFloatImageToPGM(pyramid1_gradx->img[i], fname);
-			sprintf(fname, "kltimg_tf_i%d_gy.pgm", i);
+			sprintf(fname, "..\\Resource\\kltimg_tf_i%d_gy.pgm", i);
 			_KLTWriteFloatImageToPGM(pyramid1_grady->img[i], fname);
-			sprintf(fname, "kltimg_tf_j%d.pgm", i);
+			sprintf(fname, "..\\Resource\\kltimg_tf_j%d.pgm", i);
 			_KLTWriteFloatImageToPGM(pyramid2->img[i], fname);
-			sprintf(fname, "kltimg_tf_j%d_gx.pgm", i);
+			sprintf(fname, "..\\Resource\\kltimg_tf_j%d_gx.pgm", i);
 			_KLTWriteFloatImageToPGM(pyramid2_gradx->img[i], fname);
-			sprintf(fname, "kltimg_tf_j%d_gy.pgm", i);
+			sprintf(fname, "..\\Resource\\kltimg_tf_j%d_gy.pgm", i);
 			_KLTWriteFloatImageToPGM(pyramid2_grady->img[i], fname);
 		}
 	}
 
 	/* For each feature, do ... */
 	for (indx = 0; indx < featurelist->nFeatures; indx++) {
-
 		/* Only track features that are not lost */
 		if (featurelist->feature[indx]->val >= 0) {
 

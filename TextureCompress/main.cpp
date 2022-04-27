@@ -30,15 +30,17 @@ int RunExample()
     int ncols, nrows;
     int i;
 
+    
+
     tc = KLTCreateTrackingContext();
     //KLTPrintTrackingContext(tc);
     fl = KLTCreateFeatureList(nFeatures);
 
+
+
     img1 = imgRead("..\\Resource\\img1.png", &ncols, &nrows);
     img2 = imgRead("..\\Resource\\img2.png", &ncols, &nrows);
 
-    //img1 = pgmReadFile("..\\Resource\\img1.pgm", NULL, &ncols, &nrows);
-    //img2 = pgmReadFile("..\\Resource\\img2.pgm", NULL, &ncols, &nrows);
 
     KLTSelectGoodFeatures(tc, img1, ncols, nrows, fl);
 
@@ -52,6 +54,7 @@ int RunExample()
     KLTWriteFeatureListToPPM(fl, img1, ncols, nrows, "..\\Resource\\feat1.ppm");
     KLTWriteFeatureList(fl, "feat1.txt", "%3d");
 
+    KLTTrackFeatures(tc, img1, img2, ncols, nrows, fl);
     KLTTrackFeatures(tc, img1, img2, ncols, nrows, fl);
 
     printf("\nIn second image:\n");
@@ -86,38 +89,6 @@ int main(int argc, char* argv[]) {
     int width = img.cols;
     int channels = img.channels();
 
-
-
-    // generate blocks
-    int blockIndex = 0;
-    for (int row = 0; row + blockSize <= height; row += blockSize) {
-        for (int col = 0; col + blockSize <= width; col += blockSize) {
-            Block* tmpBlock = new Block(blockIndex++, blockSize, row, col);
-            tmpBlock->computeColorHistogram(img);
-            blocks.push_back(tmpBlock);
-        }
-    }
-
-    for (int i = 0; i < 9; i++) {
-        float testTheta = guessTheta(blocks[0]->getHog(), blocks[i]->getHog());
-
-        cout << testTheta << endl;
-    }
-    
-    // create kit 
-
-    // generate seedPoints
-    //int seedBlockIndex = 0;
-    //for (int row = 0; row + blockSize <= height; row += blockSize/4) {
-    //    for (int col = 0; col + blockSize <= width; col += blockSize/4) {
-    //        Block* tmpBlock = new Block(seedBlockIndex++, blockSize, row, col);
-    //        tmpBlock->computeColorHistogram(img);
-    //        seedBlocks.push_back(tmpBlock);
-    //    }
-    //}
-
-
-    
 
     //Mat imgTest(blockSize, blockSize, CV_8UC3);
     //namedWindow("Test");
@@ -158,7 +129,7 @@ int main(int argc, char* argv[]) {
 
     
 
-          return 0;
+    return 0;
 }
 
 uchar* imgRead(const string imgPath, int* ncols, int* nrows)
@@ -169,6 +140,35 @@ uchar* imgRead(const string imgPath, int* ncols, int* nrows)
         fprintf(stderr, "Can not load image %s\n", imgPath);
         return NULL;
     }
+
+    // generate blocks
+    int blockIndex = 0;
+    for (int row = 0; row + blockSize <= img.rows; row += blockSize) {
+        for (int col = 0; col + blockSize <= img.rows; col += blockSize) {
+            Block* tmpBlock = new Block(blockIndex++, blockSize, row, col);
+            tmpBlock->computeColorHistogram(img);
+            blocks.push_back(tmpBlock);
+        }
+    }
+
+    //for (int i = 0; i < 9; i++) {
+    //    float testTheta = guessTheta(blocks[0]->getHog(), blocks[i]->getHog());
+
+    //    cout << testTheta << endl;
+    //}
+
+    // create kit 
+
+    // generate seedPoints
+    int seedBlockIndex = 0;
+    for (int row = 0; row + blockSize <= img.rows; row += blockSize/4) {
+        for (int col = 0; col + blockSize <= img.rows; col += blockSize/4) {
+            Block* tmpBlock = new Block(seedBlockIndex++, blockSize, row, col);
+            tmpBlock->computeColorHistogram(img);
+            seedBlocks.push_back(tmpBlock);
+        }
+    }
+
     *ncols = img.cols;
     *nrows = img.rows;
     ptr = (uchar*)malloc((*ncols) * (*nrows) * sizeof(char));

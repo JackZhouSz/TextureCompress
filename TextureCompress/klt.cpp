@@ -15,6 +15,7 @@
 #include "error.h"
 #include "klt.h"
 #include "pyramid.h"
+#include "Block.h"
 
 
 static const int mindist = 10; /* minimum distance between selected features */
@@ -31,7 +32,7 @@ static const float step_factor = 1.0f;
 static const KLT_BOOL sequentialMode = FALSE;
 static const KLT_BOOL lighting_insensitive = FALSE;
 /* for affine mapping*/
-static const int affineConsistencyCheck = -1;
+static const int affineConsistencyCheck = 2;
 static const int affine_window_size = 15;
 static const int affine_max_iterations = 10;
 static const float affine_max_residue = 10.0;
@@ -39,7 +40,7 @@ static const float affine_min_displacement = 0.02f;
 static const float affine_max_displacement_differ = 1.5f;
 
 static const KLT_BOOL smoothBeforeSelecting = TRUE;
-static const KLT_BOOL writeInternalImages = TRUE;
+static const KLT_BOOL writeInternalImages = FALSE;
 static const int search_range = 15;
 static const int nSkippedPixels = 0;
 

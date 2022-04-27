@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include "base.h"
+#include <opencv2/opencv.hpp>
 
 /**********
 * With pgmReadFile and pgmRead, setting img to NULL causes memory
