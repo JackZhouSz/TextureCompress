@@ -66,12 +66,17 @@ void Block::affineDeformation(Mat& img, Match match)
     Mat M = match.getMatrix();
     double* m = M.ptr<double>();
 
-    for (int row = this->getStartHeight(); row < this->getStartHeight() + this->getSize(); row++) {
-        for (int col = this->getStartWidth(); col < this->getStartWidth() + this->getSize(); col++) {
+    m[0] = -0.527;
+    m[1] = 0.847;
+    m[2] = 113.4;
+    m[3] = -0.847;
+    m[4] = -0.527;
+    m[5] = 15.35;
+
+    for (int row = -this->size / 2; row <= this->size / 2; row++) {
+        for (int col = -this->size / 2; col <= this->size / 2; col++) {
             int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
             int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
-            /*int tmpCol = (int)(cos(theta) * col - sin(theta) * row + match.m_a) + this->startWidth;
-            int tmpRow = (int)(sin(theta) * col + cos(theta) * row + match.m_b) + this->startHeight;*/
             if (tmpCol < img.cols && tmpCol >= 0 && tmpRow < img.rows && tmpRow >= 0) {
                 //img.at<Vec3b>(tmpRow, tmpCol)[0] = 0; //blue
                 img.at<Vec3b>(tmpRow, tmpCol)[1] = 200; //green
@@ -79,6 +84,7 @@ void Block::affineDeformation(Mat& img, Match match)
             }
         }
     }
+
 }
 
 

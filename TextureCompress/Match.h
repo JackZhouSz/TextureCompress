@@ -24,10 +24,12 @@ public:
         //angle 为顺时针旋转角度
         m[0] = alpha;
         m[1] = -beta;
-        m[2] = move.x * alpha - move.y * beta + (1 - alpha) * newCenter.x + beta * newCenter.y;
+        //m[2] = move.x * alpha - move.y * beta + (1 - alpha) * newCenter.x + beta * newCenter.y;
+        m[2] = newCenter.x;
         m[3] = beta;
         m[4] = alpha;
-        m[5] = move.y * alpha + move.x * beta - beta * newCenter.x + (1 - alpha) * newCenter.y;
+        m[5] = newCenter.y;
+        //m[5] = move.y * alpha + move.x * beta - beta * newCenter.x + (1 - alpha) * newCenter.y;
 
 
 	}

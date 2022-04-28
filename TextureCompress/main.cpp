@@ -41,6 +41,8 @@ int RunExample()
     img1 = imgRead("..\\Resource\\t11.png", &ncols, &nrows);
     //img2 = imgRead("..\\Resource\\img2.png", &ncols, &nrows);
 
+    testFl = initialAffineTrack(blocks);
+    myTrackAffine(tc, img1, ncols, nrows, testFl);
    /* testFl = initialAffineTrack(blocks);
 
 
@@ -154,25 +156,53 @@ uchar* imgRead(const string imgPath, int* ncols, int* nrows)
 
     // color histogram simi
     int index = 0;
-    for (int i = 0; i < seedBlocks.size(); i++)
+    for (int i = 1; i < blocks.size(); i++)
     {
+        Mat imgTest = img.clone();
         int compare_method = 0; //Correlation ( CV_COMP_CORREL )
-        double simi = compareHist(blocks[0]->getHist(), seedBlocks[i]->getHist(), compare_method);
+        double simi = compareHist(blocks[0]->getHist(), blocks[i]->getHist(), compare_method);
        
         if (simi > 0.998) {
             cout << i << " simi:" << simi << endl;
-            float testTheta = guessTheta(blocks[0]->getHog(), seedBlocks[i]->getHog());
+            float testTheta = guessTheta(blocks[0]->getHog(), blocks[i]->getHog());
             cout << "index "<<i<<" theta "<<testTheta << endl;
             int scale = 1;
-            Point2f move = Point2f(seedBlocks[i]->getStartWidth() - blocks[0]->getStartWidth(),
-                seedBlocks[i]->getStartHeight() - blocks[0]->getStartHeight());
+            Point2f move = Point2f(blocks[i]->getStartWidth() - blocks[0]->getStartWidth(),
+                blocks[i]->getStartHeight() - blocks[0]->getStartHeight());
             blocks[0]->addMatch(move, testTheta, scale);
-            blocks[0]->affineDeformation(img, blocks[0]->getMatch(index++));
+            blocks[0]->affineDeformation(imgTest, blocks[0]->getMatch(index++));
+           /* imshow("image", imgTest);
+            waitKey();*/
         }
     }
 
-    imshow("image", img);
-    waitKey();
+   Mat imgTest(img.rows,img.cols, CV_8UC3);
+   namedWindow("Test");
+ 
+   Mat M = blocks[0]->getMatch(0).getMatrix();
+   double* m = M.ptr<double>();
+
+   m[0] = -0.527;
+   m[1] = 0.847;
+   m[2] = 113.4;
+   m[3] = -0.847;
+   m[4] = -0.527;
+   m[5] = 15.35;
+
+   for (int row = -8; row <= 8; row++) {
+       for (int col = -8; col <= 8; col++) {
+           int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
+           int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
+           if (tmpCol < img.cols && tmpCol >= 0 && tmpRow < img.rows && tmpRow >= 0) {
+            
+               imgTest.at<Vec3b>(tmpRow, tmpCol) = img.at<Vec3b>(row+16, col+16);
+           }
+       }
+   }
+   imshow("image", imgTest);
+   waitKey();
+
+    
     //int index = 196;
 
     //Point2f center = Point2f(blocks[index]->getStartWidth() + blocks[index]->getSize() * 1.0 / 2, blocks[index]->getStartHeight() + blocks[index]->getSize() * 1.0 / 2);
@@ -219,7 +249,7 @@ uchar* imgRead(const string imgPath, int* ncols, int* nrows)
 
 
 
-     *ncols = img.cols;
+    *ncols = img.cols;
     *nrows = img.rows;
     ptr = (uchar*)malloc((*ncols) * (*nrows) * sizeof(char));
     if (ptr == NULL)

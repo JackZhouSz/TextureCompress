@@ -20,7 +20,7 @@
 using namespace std;
 
 static const int mindist = 10; /* minimum distance between selected features */
-static const int window_size = 7;
+static const int window_size = 13;
 static const int min_eigenvalue = 1;
 static const float min_determinant = 0.01f;
 static const float min_displacement = 0.1f;
@@ -33,7 +33,7 @@ static const float step_factor = 1.0f;
 static const KLT_BOOL sequentialMode = FALSE;
 static const KLT_BOOL lighting_insensitive = FALSE;
 /* for affine mapping*/
-static const int affineConsistencyCheck = 2;
+static const int affineConsistencyCheck = 1;
 static const int affine_window_size = 15;
 static const int affine_max_iterations = 10;
 static const float affine_max_residue = 10.0;
@@ -191,6 +191,9 @@ KLT_FeatureList initialAffineTrack(vector<Block*> blocks)
     /* Set pointers */
     fl->feature = (KLT_Feature*)(fl + 1);
     first = (KLT_Feature)(fl->feature + nBlocks);
+
+    double* m =blocks[0]->getMatch(0).getMatrix().ptr<double>();
+
     for (i = 0; i < nBlocks; i++) {
         fl->feature[i] = first + i;
         fl->feature[i]->x = blocks[i]->getStartWidth() + blocks[i]->getSize() / 2;
@@ -199,6 +202,12 @@ KLT_FeatureList initialAffineTrack(vector<Block*> blocks)
         fl->feature[i]->aff_img = NULL;           /* initialization fixed by Sinisa Segvic */
         fl->feature[i]->aff_img_gradx = NULL;
         fl->feature[i]->aff_img_grady = NULL;
+        fl->feature[i]->aff_Axx = m[0];
+        fl->feature[i]->aff_Axy = m[1];
+        fl->feature[i]->aff_x = m[2];
+        fl->feature[i]->aff_Ayx = m[3];
+        fl->feature[i]->aff_Ayy = m[4];
+        fl->feature[i]->aff_y = m[5];
     }
     /* Return feature list */
     return(fl);
@@ -436,11 +445,9 @@ void KLTUpdateTCBorder(
     window_hw = max(tc->window_width, tc->window_height) / 2;
 
     /* Find widths of convolution windows */
-    _KLTGetKernelWidths(_KLTComputeSmoothSigma(tc),
-        &gauss_width, &gaussderiv_width);
+    _KLTGetKernelWidths(_KLTComputeSmoothSigma(tc),&gauss_width, &gaussderiv_width);
     smooth_gauss_hw = gauss_width / 2;
-    _KLTGetKernelWidths(_pyramidSigma(tc),
-        &gauss_width, &gaussderiv_width);
+    _KLTGetKernelWidths(_pyramidSigma(tc),&gauss_width, &gaussderiv_width);
     pyramid_gauss_hw = gauss_width / 2;
 
     /* Compute the # of invalid pixels at each level of the pyramid.

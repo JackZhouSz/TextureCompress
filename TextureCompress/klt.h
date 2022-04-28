@@ -146,6 +146,13 @@ void KLTFreeFeatureTable(
     KLT_FeatureTable ft);
 
 /* Processing */
+void myTrackAffine(
+    KLT_TrackingContext tc,
+    KLT_PixelType* img,
+    int ncols,
+    int nrows,
+    KLT_FeatureList featurelist);
+
 void KLTSelectGoodFeatures(
     KLT_TrackingContext tc,
     KLT_PixelType* img,
