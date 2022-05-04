@@ -33,7 +33,9 @@ public:
 
 
 	}
+    Match(Mat _M) { M = _M; }
     Mat getMatrix() { return M; }
+    void changeMatrix(Mat _M) { M = _M; }
 
 private:
 	Mat M;

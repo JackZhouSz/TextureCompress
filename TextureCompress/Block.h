@@ -28,14 +28,18 @@ public:
     int getSize() { return size; }
     int getStartHeight() { return startHeight; }
     int getStartWidth() { return startWidth; }
+    float getMeanLight() { return meanLight; }
+    float getStddev() { return stddev; }
     Mat getHist() { return hsvHist; }
     Mat getHog() { return oriHist; }
-    Match getMatch(int index) { return matchList[index]; }
+    
 
     void setColor(Mat& img, Vec3f color);
     void affineDeformation(Mat& img, Match match);
     void computeColorHistogram(const Mat& img);
-    void addMatch(Point2f move, double angle, double scale);
+    void addInitMatch(Point2f move, double angle, double scale);
+
+    vector<Match> initMatchList,finalMatchList;
 
 private:
     int index;
@@ -44,7 +48,7 @@ private:
     int startWidth;
     Mat hsvHist;
     Mat oriHist;
-    vector<Match> matchList;
+    float meanLight, stddev;
 };
 
 Mat Hog(const Mat& img);

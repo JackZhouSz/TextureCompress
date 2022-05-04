@@ -53,12 +53,12 @@ void Block::setColor(Mat& img, Vec3f color)
     }
 }
 
-void Block::addMatch(Point2f move, double angle, double scale)
+void Block::addInitMatch(Point2f move, double angle, double scale)
 {
     //Match(Point2f center, Point2f move, double angle, double scale) 
     Point2f center= Point2f(this->getStartWidth() + this->getSize() * 1.0 / 2, this->getStartHeight() + this->getSize() * 1.0 / 2);
     Match m(center, move, angle, scale);
-    this->matchList.push_back(m);
+    this->initMatchList.push_back(m);
 }
 
 void Block::affineDeformation(Mat& img, Match match)
@@ -73,8 +73,8 @@ void Block::affineDeformation(Mat& img, Match match)
     m[4] = -0.527;
     m[5] = 15.35;
 
-    for (int row = -this->size / 2; row <= this->size / 2; row++) {
-        for (int col = -this->size / 2; col <= this->size / 2; col++) {
+    for (int row = -this->size / 2; row < this->size / 2; row++) {
+        for (int col = -this->size / 2; col < this->size / 2; col++) {
             int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
             int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
             if (tmpCol < img.cols && tmpCol >= 0 && tmpRow < img.rows && tmpRow >= 0) {
@@ -101,7 +101,13 @@ void Block::computeColorHistogram(const Mat& img)
         }
     }
 
-    Mat imgHSV;
+    Mat imgHSV,imgGray;
+    Mat mean, stddev;
+    cvtColor(imgBlock, imgGray, COLOR_BGR2GRAY);
+    meanStdDev(imgGray, mean, stddev);
+    this->meanLight = mean.at<double>(0, 0);
+    this->stddev = stddev.at<double>(0, 0);
+
     cvtColor(imgBlock, imgHSV, COLOR_BGR2HSV);
     int hBins = 50, sBins = 60;
     int histSize[] = { hBins,sBins };

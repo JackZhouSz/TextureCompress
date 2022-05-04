@@ -101,6 +101,7 @@ typedef struct {
     KLT_locType aff_Ayx;
     KLT_locType aff_Axy;
     KLT_locType aff_Ayy;
+    int block_index;
 }  KLT_FeatureRec, * KLT_Feature;
 
 typedef struct {
@@ -124,7 +125,7 @@ typedef struct {
  */
 
  /* Create */
-KLT_FeatureList initialAffineTrack(vector<Block*> blocks);
+KLT_FeatureList initialAffineTrack(vector<Block*> blocks, int matchNum);
 KLT_TrackingContext KLTCreateTrackingContext(void);
 KLT_FeatureList KLTCreateFeatureList(
     int nFeatures);

@@ -34,7 +34,7 @@ static const KLT_BOOL sequentialMode = FALSE;
 static const KLT_BOOL lighting_insensitive = FALSE;
 /* for affine mapping*/
 static const int affineConsistencyCheck = 1;
-static const int affine_window_size = 15;
+static const int affine_window_size = 13;
 static const int affine_max_iterations = 10;
 static const float affine_max_residue = 10.0;
 static const float affine_min_displacement = 0.02f;
@@ -172,42 +172,47 @@ KLT_FeatureList KLTCreateFeatureList(
     return(fl);
 }
 
-KLT_FeatureList initialAffineTrack(vector<Block*> blocks)
+KLT_FeatureList initialAffineTrack(vector<Block*> blocks,int matchNum)
 {
-    int nBlocks = blocks.size();
     KLT_FeatureList fl;
     KLT_Feature first;
     int nbytes = sizeof(KLT_FeatureListRec) +
-        nBlocks * sizeof(KLT_Feature) +
-        nBlocks * sizeof(KLT_FeatureRec);
-    int i;
+        matchNum * sizeof(KLT_Feature) +
+        matchNum * sizeof(KLT_FeatureRec);
+    int i = 0;
 
     /* Allocate memory for feature list */
     fl = (KLT_FeatureList)malloc(nbytes);
 
     /* Set parameters */
-    fl->nFeatures = nBlocks;
+    fl->nFeatures = matchNum;
 
     /* Set pointers */
     fl->feature = (KLT_Feature*)(fl + 1);
-    first = (KLT_Feature)(fl->feature + nBlocks);
+    first = (KLT_Feature)(fl->feature + matchNum);
 
-    double* m =blocks[0]->getMatch(0).getMatrix().ptr<double>();
 
-    for (i = 0; i < nBlocks; i++) {
-        fl->feature[i] = first + i;
-        fl->feature[i]->x = blocks[i]->getStartWidth() + blocks[i]->getSize() / 2;
-        fl->feature[i]->y = blocks[i]->getStartHeight() + blocks[i]->getSize() / 2;
-        fl->feature[i]->val = 0;
-        fl->feature[i]->aff_img = NULL;           /* initialization fixed by Sinisa Segvic */
-        fl->feature[i]->aff_img_gradx = NULL;
-        fl->feature[i]->aff_img_grady = NULL;
-        fl->feature[i]->aff_Axx = m[0];
-        fl->feature[i]->aff_Axy = m[1];
-        fl->feature[i]->aff_x = m[2];
-        fl->feature[i]->aff_Ayx = m[3];
-        fl->feature[i]->aff_Ayy = m[4];
-        fl->feature[i]->aff_y = m[5];
+    
+    
+    for (int index = 0; index < blocks.size(); index++) {
+        for (int j = 0; j < blocks[index]->initMatchList.size(); j++) {
+            fl->feature[i] = first + i;
+            fl->feature[i]->x = blocks[index]->getStartWidth() + blocks[i]->getSize() / 2;
+            fl->feature[i]->y = blocks[index]->getStartHeight() + blocks[i]->getSize() / 2;
+            fl->feature[i]->val = 0;
+            fl->feature[i]->aff_img = NULL;           /* initialization fixed by Sinisa Segvic */
+            fl->feature[i]->aff_img_gradx = NULL;
+            fl->feature[i]->aff_img_grady = NULL;
+            double* m = blocks[index]->initMatchList[j].getMatrix().ptr<double>();
+            fl->feature[i]->aff_Axx = m[0];
+            fl->feature[i]->aff_Axy = m[1];
+            fl->feature[i]->aff_x = m[2];
+            fl->feature[i]->aff_Ayx = m[3];
+            fl->feature[i]->aff_Ayy = m[4];
+            fl->feature[i]->aff_y = m[5];
+            fl->feature[i]->block_index = index;
+            i++;
+        }
     }
     /* Return feature list */
     return(fl);

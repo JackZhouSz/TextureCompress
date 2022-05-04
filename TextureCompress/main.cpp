@@ -13,66 +13,53 @@ using namespace std;
 using namespace cv;
 
 
-int blockSize = 32;
+int blockSize = 12;
+int matchNum = 0;
 vector<Block*> blocks;
-vector<Vec2b> seedPoints;
 vector<Block*> seedBlocks;
+
+const string imgPath = "..\\Resource\\t3.png";
+
+
 
 uchar* imgRead(const string imgPath, int* ncols, int* nrows);
 
 
 int RunExample()
 {
-    uchar* img1, * img2;
+    uchar* img;
     KLT_TrackingContext tc;
-    KLT_FeatureList fl,testFl;
-    int nFeatures = 100;
-    int ncols, nrows;
-    int i;
+    KLT_FeatureList testFl;
 
-    
+    int ncols, nrows;
+
+
+    img = imgRead(imgPath, &ncols, &nrows);
 
     tc = KLTCreateTrackingContext();
-    //KLTPrintTrackingContext(tc);
-    fl = KLTCreateFeatureList(nFeatures);
 
+    testFl = initialAffineTrack(blocks,matchNum);
+    myTrackAffine(tc, img, ncols, nrows, testFl);
 
+    for (int i = 0; i < testFl->nFeatures; i++)
+    {
+        if (testFl->feature[i]->val != KLT_OOB && testFl->feature[i]->val != KLT_LARGE_RESIDUE) {
+            Mat M = Mat::zeros(cv::Size(2, 3), CV_64F);
+            //重叠部分处理
+            double* m = M.ptr<double>();
+            m[0] = testFl->feature[i]->aff_Axx;
+            m[1] = testFl->feature[i]->aff_Axy;
+            m[2] = testFl->feature[i]->aff_x;
+            m[3] = testFl->feature[i]->aff_Ayx;
+            m[4] = testFl->feature[i]->aff_Ayy;
+            m[5] = testFl->feature[i]->aff_y;
+            blocks[testFl->feature[i]->block_index]->finalMatchList.push_back(Match(M));
+        }
 
-    img1 = imgRead("..\\Resource\\t11.png", &ncols, &nrows);
-    //img2 = imgRead("..\\Resource\\img2.png", &ncols, &nrows);
-
-    testFl = initialAffineTrack(blocks);
-    myTrackAffine(tc, img1, ncols, nrows, testFl);
-   /* testFl = initialAffineTrack(blocks);
-
-
-    KLTSelectGoodFeatures(tc, img1, ncols, nrows, fl);
-
-    printf("\nIn first image:\n");
-    for (i = 0; i < fl->nFeatures; i++) {
-        printf("Feature #%d:  (%f,%f) with value of %d\n",
-            i, fl->feature[i]->x, fl->feature[i]->y,
-            fl->feature[i]->val);
-    } 
-
-    KLTWriteFeatureListToPPM(fl, img1, ncols, nrows, "..\\Resource\\feat1.ppm");
-    KLTWriteFeatureList(fl, "feat1.txt", "%3d");*/
-
-    //KLTTrackFeatures(tc, img1, img2, ncols, nrows, fl);
-    //KLTTrackFeatures(tc, img1, img2, ncols, nrows, fl);
-
-    /*printf("\nIn second image:\n");
-    for (i = 0; i < fl->nFeatures; i++) {
-        printf("Feature #%d:  (%f,%f) with value of %d\n",
-            i, fl->feature[i]->x, fl->feature[i]->y,
-            fl->feature[i]->val);
     }
-
-    KLTWriteFeatureListToPPM(fl, img2, ncols, nrows, "..\\Resource\\feat2.ppm");*/
-    //KLTWriteFeatureList(fl, "..\\Resource\\feat2.fl", NULL);      /* binary file */
-    //KLTWriteFeatureList(fl, "..\\Resource\\feat2.txt", "%5.1f");  /* text file   */
-
     return 0;
+
+
 }
 
 int main(int argc, char* argv[]) {
@@ -80,47 +67,30 @@ int main(int argc, char* argv[]) {
 
     RunExample();
 
+    Mat img = imread(imgPath, 1);
+    Mat imgTest(img.rows, img.cols, CV_8UC3);
+    namedWindow("Test");
 
+    for (int index = 0; index < blocks.size(); index++) {
+        for (int i = 0; i < blocks[index]->finalMatchList.size(); i++) {
+            Mat M = blocks[index]->finalMatchList[i].getMatrix();
+            double* m = M.ptr<double>();
+            for (int row = -blockSize / 2; row < blockSize / 2; row++) {
+                for (int col = -blockSize / 2; col < blockSize / 2; col++) {
+                    int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
+                    int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
+                    if (tmpCol < img.cols && tmpCol >= 0 && tmpRow < img.rows && tmpRow >= 0) {
 
-    //Mat imgTest(blockSize, blockSize, CV_8UC3);
-    //namedWindow("Test");
-    //for (int i = 0; i < imgTest.rows; i++)        //遍历每一行每一列并设置其像素值
-    //{
-    //    for (int j = 0; j < imgTest.cols; j++)
-    //    {
-    //        imgTest.at<Vec3b>(i, j) = img.at<Vec3b>(blocks[196]->getStartHeight() + i, blocks[196]->getStartWidth() + j);
-    //    }
-    //}
-
-    //imshow("Test", imgTest);   //窗口中显示图像
-    //imwrite("F:\\NewPro\\TextureCompress\\Test\\test.jpg", imgTest);    //保存生成的图片
-    //waitKey(5000); //等待5000ms后窗口自动关闭
-    //getchar();
-
-    // color histogram simi
-    //for (int i = 0; i < seedBlocks.size(); i++)
-    //{
-    //    int compare_method = 0; //Correlation ( CV_COMP_CORREL )
-    //    double simi = compareHist(blocks[0]->getHist(), seedBlocks[i]->getHist(), compare_method);
-    //    cout << i << " simi:" << simi << endl;
-    //    if (simi > 0.997) {
-    //        Vec3f Color = Vec3f(0, 0, 255.0); //bgr 0-255
-    //        seedBlocks[i]->setColor(img, Color);
-    //    }
-    //}
-    //imshow("image", img);
-    //waitKey();
-
-    //Vec3f Color = Vec3f(0, 0, 255.0); //bgr 0-255
-    //blocks[0]->setColor(img, Color);
-
-    ////Match match(2.0f,1.0f,0.0f,5.0f,100.0f,0.0f,-60.0f);
-    ////blocks[196]->affineDeformation(img, match);
-    ////blocks[196]->rotation(img, match);
-
-
+                        imgTest.at<Vec3b>(tmpRow, tmpCol) = img.at<Vec3b>(row + blocks[index]->getStartHeight()+ blockSize / 2, col + blocks[index]->getStartWidth() + blockSize / 2);
+                    }
+                }
+            }
+        }
+    }
+    imwrite("..\\Resource\\test.png", imgTest);
+    imshow("image", imgTest);
+    waitKey();
     
-
     return 0;
 }
 
@@ -156,97 +126,23 @@ uchar* imgRead(const string imgPath, int* ncols, int* nrows)
 
     // color histogram simi
     int index = 0;
-    for (int i = 1; i < blocks.size(); i++)
+    for (int i = 20; i < seedBlocks.size(); i++)
     {
         Mat imgTest = img.clone();
         int compare_method = 0; //Correlation ( CV_COMP_CORREL )
-        double simi = compareHist(blocks[0]->getHist(), blocks[i]->getHist(), compare_method);
-       
-        if (simi > 0.998) {
+        double simi = compareHist(blocks[index]->getHist(), seedBlocks[i]->getHist(), compare_method);
+        //cout << i << " simi:" << simi << endl;
+        if (simi>0.99) {
             cout << i << " simi:" << simi << endl;
-            float testTheta = guessTheta(blocks[0]->getHog(), blocks[i]->getHog());
+            float testTheta = guessTheta(blocks[index]->getHog(), seedBlocks[i]->getHog());
             cout << "index "<<i<<" theta "<<testTheta << endl;
             int scale = 1;
-            Point2f move = Point2f(blocks[i]->getStartWidth() - blocks[0]->getStartWidth(),
-                blocks[i]->getStartHeight() - blocks[0]->getStartHeight());
-            blocks[0]->addMatch(move, testTheta, scale);
-            blocks[0]->affineDeformation(imgTest, blocks[0]->getMatch(index++));
-           /* imshow("image", imgTest);
-            waitKey();*/
+            Point2f move = Point2f(seedBlocks[i]->getStartWidth() - blocks[index]->getStartWidth(),
+                seedBlocks[i]->getStartHeight() - blocks[index]->getStartHeight());
+            blocks[index]->addInitMatch(move, testTheta, scale);
+            matchNum++;
         }
     }
-
-   Mat imgTest(img.rows,img.cols, CV_8UC3);
-   namedWindow("Test");
- 
-   Mat M = blocks[0]->getMatch(0).getMatrix();
-   double* m = M.ptr<double>();
-
-   m[0] = -0.527;
-   m[1] = 0.847;
-   m[2] = 113.4;
-   m[3] = -0.847;
-   m[4] = -0.527;
-   m[5] = 15.35;
-
-   for (int row = -8; row <= 8; row++) {
-       for (int col = -8; col <= 8; col++) {
-           int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
-           int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
-           if (tmpCol < img.cols && tmpCol >= 0 && tmpRow < img.rows && tmpRow >= 0) {
-            
-               imgTest.at<Vec3b>(tmpRow, tmpCol) = img.at<Vec3b>(row+16, col+16);
-           }
-       }
-   }
-   imshow("image", imgTest);
-   waitKey();
-
-    
-    //int index = 196;
-
-    //Point2f center = Point2f(blocks[index]->getStartWidth() + blocks[index]->getSize() * 1.0 / 2, blocks[index]->getStartHeight() + blocks[index]->getSize() * 1.0 / 2);
-    //Mat rotationMat = getRotationMatrix2D(center, 45, 2); 
-    //double* m = rotationMat.ptr<double>();
-
-    //Vec3f Color = Vec3f(0, 0, 255.0); //bgr 0-255
-    //blocks[index]->setColor(img, Color);
-
-    //for (int row = blocks[index]->getStartHeight(); row < blocks[index]->getStartHeight()+blocks[index]->getSize(); row++) {
-    //    for (int col = blocks[index]->getStartWidth(); col < blocks[index]->getStartWidth()+blocks[index]->getSize(); col++) {
-    //        int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
-    //        int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
-    //        if (tmpCol < img.cols && tmpRow < img.rows) {
-    //            img.at<Vec3b>(tmpRow, tmpCol)[0] = 0; //blue
-    //            img.at<Vec3b>(tmpRow, tmpCol)[1] = 255; //green
-    //            img.at<Vec3b>(tmpRow, tmpCol)[2] = 0; //red
-    //        }
-    //    }
-    //}
-
-    //imshow("image", img);
-    //waitKey();
-// 
-   //Mat imgTest(img.rows,img.cols, CV_8UC3);
-   //namedWindow("Test");
-   //for (int i = 0; i < imgTest.rows; i++)        //遍历每一行每一列并设置其像素值
-   //{
-   //    for (int j = 0; j < imgTest.cols; j++)
-   //    {
-   //        imgTest.at<Vec3b>(i, j) = img.at<Vec3b>(blocks[196]->getStartHeight() + i, blocks[196]->getStartWidth() + j);
-   //    }
-   //}
-
-   //imshow("Test", imgTest);   //窗口中显示图像
-   //imwrite("..\\Resource\\test.jpg", imgTest);    //保存生成的图片
-   //waitKey();
-
-
-
-
-
-
-
 
 
     *ncols = img.cols;
