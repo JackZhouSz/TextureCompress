@@ -1,6 +1,7 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <cmath>
+#include <algorithm>
 #include "Block.h"
 
 //   klt
@@ -14,9 +15,11 @@ using namespace cv;
 
 
 int blockSize = 12;
+float NMSth = 8.0f;
 int matchNum = 0;
 vector<Block*> blocks;
 vector<Block*> seedBlocks;
+
 
 const string imgPath = "..\\Resource\\t3.png";
 
@@ -24,6 +27,10 @@ const string imgPath = "..\\Resource\\t3.png";
 
 uchar* imgRead(const string imgPath, int* ncols, int* nrows);
 
+bool myCompare(pair<pair<float, float>, pair<float, int> > a, pair<pair<float, float>, pair<float, int> > b)
+{
+    return a.second.first < b.second.first;
+}
 
 int RunExample()
 {
@@ -41,22 +48,53 @@ int RunExample()
     testFl = initialAffineTrack(blocks,matchNum);
     myTrackAffine(tc, img, ncols, nrows, testFl);
 
-    for (int i = 0; i < testFl->nFeatures; i++)
-    {
+    vector<vector<pair<pair<float, float>, pair<float,int> > > >NMSlist(blocks.size()), affineList(blocks.size());
+
+
+    for (int i = 0; i < testFl->nFeatures; i++){
         if (testFl->feature[i]->val != KLT_OOB && testFl->feature[i]->val != KLT_LARGE_RESIDUE) {
-            Mat M = Mat::zeros(cv::Size(2, 3), CV_64F);
-            //重叠部分处理
-            double* m = M.ptr<double>();
-            m[0] = testFl->feature[i]->aff_Axx;
-            m[1] = testFl->feature[i]->aff_Axy;
-            m[2] = testFl->feature[i]->aff_x;
-            m[3] = testFl->feature[i]->aff_Ayx;
-            m[4] = testFl->feature[i]->aff_Ayy;
-            m[5] = testFl->feature[i]->aff_y;
-            blocks[testFl->feature[i]->block_index]->finalMatchList.push_back(Match(M));
+
+            
+
+            //Apply NMS
+            NMSlist[testFl->feature[i]->block_index].push_back(make_pair(make_pair(testFl->feature[i]->aff_x, testFl->feature[i]->aff_y), make_pair(testFl->feature[i]->error, i)));
         }
 
     }
+    //Apply NMS for each Block's matchlist
+    for (int i = 0; i < blocks.size(); i++) {
+        if (!NMSlist[i].size()) continue;
+
+        sort(NMSlist[i].begin(), NMSlist[i].end(), myCompare);
+        affineList[i].push_back(NMSlist[i][0]);
+        for (int index = 1; index < NMSlist[i].size(); index++) {
+            float minDist = 1e9;
+            for (int j = 0; j < affineList[i].size(); j++) {
+                float tmpDist = pow(affineList[i][j].first.first - NMSlist[i][index].first.first, 2) +
+                    pow(affineList[i][j].first.second - NMSlist[i][index].first.second, 2);
+                if (tmpDist < minDist)
+                    minDist = tmpDist;
+            }
+            if (minDist > NMSth) {
+                affineList[i].push_back(NMSlist[i][index]);
+            }
+        }
+
+        for (int j = 0; j < affineList[i].size(); j++) {
+            int featureIndex = affineList[i][j].second.second;
+            Mat M = Mat::zeros(cv::Size(2, 3), CV_64F);
+            double* m = M.ptr<double>();
+            m[0] = testFl->feature[featureIndex]->aff_Axx;
+            m[1] = testFl->feature[featureIndex]->aff_Axy;
+            m[2] = testFl->feature[featureIndex]->aff_x;
+            m[3] = testFl->feature[featureIndex]->aff_Ayx;
+            m[4] = testFl->feature[featureIndex]->aff_Ayy;
+            m[5] = testFl->feature[featureIndex]->aff_y;
+            blocks[i]->finalMatchList.push_back(Match(M));
+        }
+    }
+    
+
     return 0;
 
 

@@ -977,7 +977,8 @@ static int myTrackFeatureAffine(
 	int affine_map,      /* whether to evaluates the consistency of features with affine mapping */
 	float mdd,           /* difference between the displacements */
 	float* Axx, float* Ayx,
-	float* Axy, float* Ayy)        /* used affine mapping */
+	float* Axy, float* Ayy,        /* used affine mapping */
+	float* error)
 {
 
 	_FloatWindow imgdiff, gradx, grady;
@@ -1161,8 +1162,8 @@ static int myTrackFeatureAffine(
 #ifdef DEBUG_AFFINE_MAPPING
 		printf("iter = %d final_res = %f\n", iteration, _sumAbsFloatWindow(imgdiff, width, height) / (width * height));
 #endif 
-		float error = _sumAbsFloatWindow(imgdiff, width / 2 * 2, height / 2 * 2);
-		if (error > 1000)
+		*error = _sumAbsFloatWindow(imgdiff, width / 2 * 2, height / 2 * 2);
+		if (*error > 1000)
 			status = KLT_LARGE_RESIDUE;
 	}
 
@@ -1883,11 +1884,13 @@ void myTrackAffine(
 			&featurelist->feature[indx]->aff_Axx,
 			&featurelist->feature[indx]->aff_Ayx,
 			&featurelist->feature[indx]->aff_Axy,
-			&featurelist->feature[indx]->aff_Ayy
+			&featurelist->feature[indx]->aff_Ayy,
+			&featurelist->feature[indx]->error
 		);
 		featurelist->feature[indx]->aff_x = xlocout;
 		featurelist->feature[indx]->aff_y = ylocout;
 		featurelist->feature[indx]->val = val;
+
 
 	}
 }
