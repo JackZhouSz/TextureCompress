@@ -15,13 +15,13 @@ using namespace cv;
 
 
 int blockSize = 12;
-float NMSth = 8.0f;
+float NMSth = 10.0f;
 int matchNum = 0;
 vector<Block*> blocks;
 vector<Block*> seedBlocks;
 
 
-const string imgPath = "..\\Resource\\t3.png";
+const string imgPath = "..\\Resource\\orig1.png";
 
 
 
@@ -53,8 +53,6 @@ int RunExample()
 
     for (int i = 0; i < testFl->nFeatures; i++){
         if (testFl->feature[i]->val != KLT_OOB && testFl->feature[i]->val != KLT_LARGE_RESIDUE) {
-
-            
 
             //Apply NMS
             NMSlist[testFl->feature[i]->block_index].push_back(make_pair(make_pair(testFl->feature[i]->aff_x, testFl->feature[i]->aff_y), make_pair(testFl->feature[i]->error, i)));
@@ -94,9 +92,7 @@ int RunExample()
         }
     }
     
-
     return 0;
-
 
 }
 
@@ -163,14 +159,14 @@ uchar* imgRead(const string imgPath, int* ncols, int* nrows)
 
 
     // color histogram simi
-    int index = 0;
-    for (int i = 20; i < seedBlocks.size(); i++)
+    int index = 2;
+    for (int i = 0; i < seedBlocks.size(); i++)
     {
         Mat imgTest = img.clone();
         int compare_method = 0; //Correlation ( CV_COMP_CORREL )
         double simi = compareHist(blocks[index]->getHist(), seedBlocks[i]->getHist(), compare_method);
         //cout << i << " simi:" << simi << endl;
-        if (simi>0.99) {
+        if (simi>0.5) {
             cout << i << " simi:" << simi << endl;
             float testTheta = guessTheta(blocks[index]->getHog(), seedBlocks[i]->getHog());
             cout << "index "<<i<<" theta "<<testTheta << endl;

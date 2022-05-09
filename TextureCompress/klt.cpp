@@ -37,7 +37,7 @@ static const int affineConsistencyCheck = 1;
 static const int affine_window_size = 13;
 static const int affine_max_iterations = 10;
 static const float affine_max_residue = 10.0;
-static const float affine_min_displacement = 0.02f;
+static const float affine_min_displacement = 0.01f;
 static const float affine_max_displacement_differ = 1.5f;
 
 static const KLT_BOOL smoothBeforeSelecting = TRUE;
@@ -197,8 +197,8 @@ KLT_FeatureList initialAffineTrack(vector<Block*> blocks,int matchNum)
     for (int index = 0; index < blocks.size(); index++) {
         for (int j = 0; j < blocks[index]->initMatchList.size(); j++) {
             fl->feature[i] = first + i;
-            fl->feature[i]->x = blocks[index]->getStartWidth() + blocks[i]->getSize() / 2;
-            fl->feature[i]->y = blocks[index]->getStartHeight() + blocks[i]->getSize() / 2;
+            fl->feature[i]->x = blocks[index]->getStartWidth() + blocks[index]->getSize() / 2;
+            fl->feature[i]->y = blocks[index]->getStartHeight() + blocks[index]->getSize() / 2;
             fl->feature[i]->val = 0;
             fl->feature[i]->aff_img = NULL;           /* initialization fixed by Sinisa Segvic */
             fl->feature[i]->aff_img_gradx = NULL;
@@ -211,6 +211,7 @@ KLT_FeatureList initialAffineTrack(vector<Block*> blocks,int matchNum)
             fl->feature[i]->aff_Ayy = m[4];
             fl->feature[i]->aff_y = m[5];
             fl->feature[i]->block_index = index;
+
             i++;
         }
     }

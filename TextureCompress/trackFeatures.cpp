@@ -1105,18 +1105,40 @@ static int myTrackFeatureAffine(
 		*x2 += dx;
 		*y2 += dy;
 
+		float ul_x_new = *Axx * (-hw) + *Axy * hh + *x2;
+		float ul_y_new = *Ayx * (-hw) + *Ayy * hh + *y2;
+		float ll_x_new = *Axx * (-hw) + *Axy * (-hh) + *x2;
+		float ll_y_new = *Ayx * (-hw) + *Ayy * (-hh) + *y2;
+		float ur_x_new = *Axx * hw + *Axy * hh + *x2;
+		float ur_y_new = *Ayx * hw + *Ayy * hh + *y2;
+		float lr_x_new = *Axx * hw + *Axy * (-hh) + *x2;
+		float lr_y_new = *Ayx * hw + *Ayy * (-hh) + *y2;
+
+		if (
+			ul_x_new < 0.0f || nc2 - (ul_x_new) < one_plus_eps ||
+			ll_x_new < 0.0f || nc2 - (ll_x_new) < one_plus_eps ||
+			ur_x_new < 0.0f || nc2 - (ur_x_new) < one_plus_eps ||
+			lr_x_new < 0.0f || nc2 - (lr_x_new) < one_plus_eps ||
+			ul_y_new < 0.0f || nr2 - (ul_y_new) < one_plus_eps ||
+			ll_y_new < 0.0f || nr2 - (ll_y_new) < one_plus_eps ||
+			ur_y_new < 0.0f || nr2 - (ur_y_new) < one_plus_eps ||
+			lr_y_new < 0.0f || nr2 - (lr_y_new) < one_plus_eps) {
+			status = KLT_OOB;
+			break;
+		}
+
 		/* old upper left corner - new upper left corner */
-		ul_x -= *Axx * (-hw) + *Axy * hh + *x2;
-		ul_y -= *Ayx * (-hw) + *Ayy * hh + *y2;
+		ul_x -= ul_x_new;
+		ul_y -= ul_y_new;
 		/* old lower left corner - new lower left corner */
-		ll_x -= *Axx * (-hw) + *Axy * (-hh) + *x2;
-		ll_y -= *Ayx * (-hw) + *Ayy * (-hh) + *y2;
+		ll_x -= ll_x_new;
+		ll_y -= ll_y_new;
 		/* old upper right corner - new upper right corner */
-		ur_x -= *Axx * hw + *Axy * hh + *x2;
-		ur_y -= *Ayx * hw + *Ayy * hh + *y2;
+		ur_x -= ur_x_new;
+		ur_y -= ur_y_new;
 		/* old lower right corner - new lower right corner */
-		lr_x -= *Axx * hw + *Axy * (-hh) + *x2;
-		lr_y -= *Ayx * hw + *Ayy * (-hh) + *y2;
+		lr_x -= lr_x_new;
+		lr_y -= lr_y_new;
 
 #ifdef DEBUG_AFFINE_MAPPING 
 		printf("iter = %d, ul_x=%f ul_y=%f ll_x=%f ll_y=%f ur_x=%f ur_y=%f lr_x=%f lr_y=%f \n",
@@ -1163,7 +1185,7 @@ static int myTrackFeatureAffine(
 		printf("iter = %d final_res = %f\n", iteration, _sumAbsFloatWindow(imgdiff, width, height) / (width * height));
 #endif 
 		*error = _sumAbsFloatWindow(imgdiff, width / 2 * 2, height / 2 * 2);
-		if (*error > 1000)
+		if (*error > 4000)
 			status = KLT_LARGE_RESIDUE;
 	}
 
@@ -1846,6 +1868,7 @@ void myTrackAffine(
 
 	/* For each feature, do ... */
 	for (indx = 0; indx < featurelist->nFeatures; indx++) {
+
 		xloc = featurelist->feature[indx]->x;
 		yloc = featurelist->feature[indx]->y;
 
