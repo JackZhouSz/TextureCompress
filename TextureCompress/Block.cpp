@@ -66,13 +66,6 @@ void Block::affineDeformation(Mat& img, Match match)
     Mat M = match.getMatrix();
     double* m = M.ptr<double>();
 
-    m[0] = -0.527;
-    m[1] = 0.847;
-    m[2] = 113.4;
-    m[3] = -0.847;
-    m[4] = -0.527;
-    m[5] = 15.35;
-
     for (int row = -this->size / 2; row < this->size / 2; row++) {
         for (int col = -this->size / 2; col < this->size / 2; col++) {
             int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);

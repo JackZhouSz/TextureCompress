@@ -1185,7 +1185,7 @@ static int myTrackFeatureAffine(
 		printf("iter = %d final_res = %f\n", iteration, _sumAbsFloatWindow(imgdiff, width, height) / (width * height));
 #endif 
 		*error = _sumAbsFloatWindow(imgdiff, width / 2 * 2, height / 2 * 2);
-		if (*error > 4000)
+		if (*error > 2000)
 			status = KLT_LARGE_RESIDUE;
 	}
 
@@ -1853,7 +1853,7 @@ void myTrackAffine(
 
 
 	/* Write internal images */
-	if (1) {
+	/*if (1) {
 		char fname[80];
 		for (i = 0; i < tc->nPyramidLevels; i++) {
 			sprintf(fname, "..\\Resource\\kltimg_tf_i%d.pgm", i);
@@ -1864,10 +1864,12 @@ void myTrackAffine(
 			_KLTWriteFloatImageToPGM(pyramid_grady->img[i], fname);
 			sprintf(fname, "..\\Resource\\kltimg_tf_j%d.pgm", i);
 		}
-	}
+	}*/
 
 	/* For each feature, do ... */
 	for (indx = 0; indx < featurelist->nFeatures; indx++) {
+
+		printf("\rcompute feature affine [%.2f%%]", indx * 100.0 / (featurelist->nFeatures - 1));
 
 		xloc = featurelist->feature[indx]->x;
 		yloc = featurelist->feature[indx]->y;

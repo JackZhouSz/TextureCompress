@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <Windows.h>
 #include "Block.h"
 
 //   klt
@@ -24,7 +25,6 @@ vector<Block*> seedBlocks;
 const string imgPath = "..\\Resource\\orig1.png";
 
 
-
 uchar* imgRead(const string imgPath, int* ncols, int* nrows);
 
 bool myCompare(pair<pair<float, float>, pair<float, int> > a, pair<pair<float, float>, pair<float, int> > b)
@@ -32,14 +32,13 @@ bool myCompare(pair<pair<float, float>, pair<float, int> > a, pair<pair<float, f
     return a.second.first < b.second.first;
 }
 
-int RunExample()
+void FindingSimi()
 {
     uchar* img;
     KLT_TrackingContext tc;
     KLT_FeatureList testFl;
 
     int ncols, nrows;
-
 
     img = imgRead(imgPath, &ncols, &nrows);
 
@@ -48,12 +47,11 @@ int RunExample()
     testFl = initialAffineTrack(blocks,matchNum);
     myTrackAffine(tc, img, ncols, nrows, testFl);
 
-    vector<vector<pair<pair<float, float>, pair<float,int> > > >NMSlist(blocks.size()), affineList(blocks.size());
 
+    vector<vector<pair<pair<float, float>, pair<float,int> > > >NMSlist(blocks.size()), affineList(blocks.size());
 
     for (int i = 0; i < testFl->nFeatures; i++){
         if (testFl->feature[i]->val != KLT_OOB && testFl->feature[i]->val != KLT_LARGE_RESIDUE) {
-
             //Apply NMS
             NMSlist[testFl->feature[i]->block_index].push_back(make_pair(make_pair(testFl->feature[i]->aff_x, testFl->feature[i]->aff_y), make_pair(testFl->feature[i]->error, i)));
         }
@@ -93,15 +91,101 @@ int RunExample()
         }
     }
     
-    return 0;
+    return ;
 
+}
+
+void CreatingCharts()
+{
+    vector<set<pair<int, int> > >inverseCover(blocks.size());
+    vector<set<int> >candidateRegion(blocks.size());
+    set<int> Ie,epitome;
+
+    Mat img = imread(imgPath, 1);
+    int colBlockNum = img.cols / blockSize;
+    int rowBlockNum = img.rows / blockSize;
+
+    // compute inverseCover
+    for (int index = 0; index < blocks.size(); index++) {
+        for (int i = 0; i < blocks[index]->finalMatchList.size(); i++) {
+            Mat M = blocks[index]->finalMatchList[i].getMatrix();
+            double* m = M.ptr<double>();
+            for (int row = -blockSize / 2; row < blockSize / 2; row++) {
+                for (int col = -blockSize / 2; col < blockSize / 2; col++) {
+                    int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
+                    int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
+                    int coverIndex = tmpRow / blockSize * colBlockNum + tmpCol / blockSize;
+                    inverseCover[coverIndex].insert(make_pair(index, i));
+                }
+            }
+        }
+    }
+
+    // compute candidateRegion
+    for (int index = 0; index < blocks.size(); index++) {
+        for (set<pair<int, int> >::iterator it = inverseCover[index].begin(); it != inverseCover[index].end(); it++) {
+            Mat M = blocks[it->first]->finalMatchList[it->second].getMatrix();
+            double* m = M.ptr<double>();
+            for (int row = -blockSize / 2; row < blockSize / 2; row++) {
+                for (int col = -blockSize / 2; col < blockSize / 2; col++) {
+                    int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
+                    int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
+                    int coverIndex = tmpRow / blockSize * (img.cols / blockSize) + tmpCol / blockSize;
+                    candidateRegion[index].insert(coverIndex);
+                }
+            }
+        }
+    }
+
+    while (Ie.size() != blocks.size()) {
+        set<int> nowChart, nextChart;
+        int maxCoverIndex = 0, maxTmp = 0;
+        for (int index = 0; index < blocks.size(); index++) {
+            if (Ie.find(index) == Ie.end() && inverseCover[index].size() > maxTmp) {
+                maxTmp = inverseCover[index].size();
+                maxCoverIndex = index;
+            }
+        }
+
+        for (set<int>::iterator it = candidateRegion[maxCoverIndex].begin(); it != candidateRegion[maxCoverIndex].end(); it++) {
+            Ie.insert(*it);
+            epitome.insert(*it);
+            nowChart.insert(*it);
+        }
+
+        for (set<pair<int, int> >::iterator it = inverseCover[maxCoverIndex].begin(); it != inverseCover[maxCoverIndex].end(); it++) {
+            Ie.insert(it->first);
+        }
+
+        vector<int> flag(blocks.size(), 0);
+        // growth chart with block's candidates
+        // search blocks inside or adjacent to current chart
+        for (set<int>::iterator it = nowChart.begin(); it != nowChart.end(); it++) {
+            // toDo Check Boarder
+            int a = *it - 1;
+            int b = *it + 1;
+            int c = *it - colBlockNum;
+            int d = *it + colBlockNum;
+            if (flag[a] == 0 && a >= 0) {
+                set<int> tmpChart = nowChart;
+                //要求引入某个block的canndiate j后带来的额外Cj消耗小于可以更多压缩的块数
+            }
+        }
+
+    }
+    
+
+
+
+    return;
 }
 
 int main(int argc, char* argv[]) {
 
 
-    RunExample();
+    FindingSimi();
 
+    // Reconstructed Test
     Mat img = imread(imgPath, 1);
     Mat imgTest(img.rows, img.cols, CV_8UC3);
     namedWindow("Test");
@@ -125,6 +209,8 @@ int main(int argc, char* argv[]) {
     imwrite("..\\Resource\\test.png", imgTest);
     imshow("image", imgTest);
     waitKey();
+
+    CreatingCharts();
     
     return 0;
 }
@@ -160,24 +246,28 @@ uchar* imgRead(const string imgPath, int* ncols, int* nrows)
 
 
     // color histogram simi
-    int index = 2;
-    for (int i = 0; i < seedBlocks.size(); i++)
-    {
-        Mat imgTest = img.clone();
-        int compare_method = 0; //Correlation ( CV_COMP_CORREL )
-        double simi = compareHist(blocks[index]->getHist(), seedBlocks[i]->getHist(), compare_method);
-        //cout << i << " simi:" << simi << endl;
-        if (simi>0.5) {
-            cout << i << " simi:" << simi << endl;
-            float testTheta = guessTheta(blocks[index]->getHog(), seedBlocks[i]->getHog());
-            cout << "index "<<i<<" theta "<<testTheta << endl;
-            int scale = 1;
-            Point2f move = Point2f(seedBlocks[i]->getStartWidth() - blocks[index]->getStartWidth(),
-                seedBlocks[i]->getStartHeight() - blocks[index]->getStartHeight());
-            blocks[index]->addInitMatch(move, testTheta, scale);
-            matchNum++;
+    for (int index = 0; index < blocks.size(); index++) {
+        printf("\rcompute block simi[%.2f%%]", index * 100.0 / (blocks.size() - 1));
+        for (int i = 0; i < seedBlocks.size(); i++)
+        {
+            Mat imgTest = img.clone();
+            int compare_method = 0; //Correlation ( CV_COMP_CORREL )
+            double simi = compareHist(blocks[index]->getHist(), seedBlocks[i]->getHist(), compare_method);
+            //cout << i << " simi:" << simi << endl;
+            if (simi > 0.5) {
+                //cout << i << " simi:" << simi << endl;
+                float testTheta = guessTheta(blocks[index]->getHog(), seedBlocks[i]->getHog());
+                //cout << "index " << i << " theta " << testTheta << endl;
+                int scale = 1;
+                Point2f move = Point2f(seedBlocks[i]->getStartWidth() - blocks[index]->getStartWidth(),
+                    seedBlocks[i]->getStartHeight() - blocks[index]->getStartHeight());
+                blocks[index]->addInitMatch(move, testTheta, scale);
+                matchNum++;
+            }
         }
     }
+
+    
 
 
     *ncols = img.cols;
