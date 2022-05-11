@@ -16,7 +16,7 @@ using namespace cv;
 
 
 int blockSize = 12;
-float NMSth = 10.0f;
+float NMSth = 50.0f;
 int matchNum = 0;
 vector<Block*> blocks;
 vector<Block*> seedBlocks;
@@ -51,7 +51,7 @@ void FindingSimi()
     vector<vector<pair<pair<float, float>, pair<float,int> > > >NMSlist(blocks.size()), affineList(blocks.size());
 
     for (int i = 0; i < testFl->nFeatures; i++){
-        if (testFl->feature[i]->val != KLT_OOB && testFl->feature[i]->val != KLT_LARGE_RESIDUE) {
+        if (testFl->feature[i]->val == KLT_TRACKED) {
             //Apply NMS
             NMSlist[testFl->feature[i]->block_index].push_back(make_pair(make_pair(testFl->feature[i]->aff_x, testFl->feature[i]->aff_y), make_pair(testFl->feature[i]->error, i)));
         }
@@ -97,7 +97,7 @@ void FindingSimi()
 
 void CreatingCharts()
 {
-    vector<set<pair<int, int> > >inverseCover(blocks.size());
+    vector<set<pair<int, int> > >tmpCover(blocks.size()), inverseCover(blocks.size()); // blockIndex & matchIndex
     vector<set<int> >candidateRegion(blocks.size());
     set<int> Ie,epitome;
 
@@ -115,15 +115,27 @@ void CreatingCharts()
                     int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
                     int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
                     int coverIndex = tmpRow / blockSize * colBlockNum + tmpCol / blockSize;
-                    inverseCover[coverIndex].insert(make_pair(index, i));
+                    tmpCover[coverIndex].insert(make_pair(index, i));
                 }
             }
         }
     }
-
+    // make sure one block's match show only once
+    for (int index = 0; index < blocks.size(); index++) {
+        int preIndex = -1;
+        for (set<pair<int, int> >::iterator it = tmpCover[index].begin(); it != tmpCover[index].end(); it++) {
+            if (it->first == preIndex)
+                continue;
+            else {
+                preIndex = it->first;
+                inverseCover[index].insert(*it);
+            }
+        }
+    }
     // compute candidateRegion
     for (int index = 0; index < blocks.size(); index++) {
         for (set<pair<int, int> >::iterator it = inverseCover[index].begin(); it != inverseCover[index].end(); it++) {
+            
             Mat M = blocks[it->first]->finalMatchList[it->second].getMatrix();
             double* m = M.ptr<double>();
             for (int row = -blockSize / 2; row < blockSize / 2; row++) {
@@ -186,7 +198,7 @@ int main(int argc, char* argv[]) {
     FindingSimi();
 
     // Reconstructed Test
-    Mat img = imread(imgPath, 1);
+    /*Mat img = imread(imgPath, 1);
     Mat imgTest(img.rows, img.cols, CV_8UC3);
     namedWindow("Test");
 
@@ -204,11 +216,13 @@ int main(int argc, char* argv[]) {
                     }
                 }
             }
+            imshow("image", imgTest);
+            waitKey();
         }
     }
     imwrite("..\\Resource\\test.png", imgTest);
     imshow("image", imgTest);
-    waitKey();
+    waitKey();*/
 
     CreatingCharts();
     

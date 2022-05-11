@@ -40,7 +40,7 @@ static float _interpolate(
 	float* ptr = img->data + (img->ncols * yt) + xt;
 
 #ifndef _DNDEBUG
-	if (xt < 0 || yt < 0 || xt >= img->ncols - 1 || yt >= img->nrows - 1) {
+	if (xt < 0 || yt < 0 || xt > img->ncols - 1 || yt > img->nrows - 1) {
 		fprintf(stderr, "(xt,yt)=(%d,%d)  imgsize=(%d,%d)\n"
 			"(x,y)=(%f,%f)  (ax,ay)=(%f,%f)\n",
 			xt, yt, img->ncols, img->nrows, x, y, ax, ay);
@@ -48,7 +48,7 @@ static float _interpolate(
 	}
 #endif
 
-	assert(xt >= 0 && yt >= 0 && xt <= img->ncols - 2 && yt <= img->nrows - 2);
+	assert(xt >= 0 && yt >= 0 && xt <= img->ncols - 1 && yt <= img->nrows - 1);
 
 	float res = ((1 - ax) * (1 - ay) * *ptr +
 		ax * (1 - ay) * *(ptr + 1) +
@@ -1030,11 +1030,11 @@ static int myTrackFeatureAffine(
 			y1 - hh < 0.0f || nr1 - (y1 + hh) < one_plus_eps ||
 			ul_x < 0.0f || nc2 - (ul_x) < one_plus_eps ||
 			ll_x < 0.0f || nc2 - (ll_x) < one_plus_eps ||
-			ur_x < 0.0f || nc2 - (ur_x) < one_plus_eps ||
-			lr_x < 0.0f || nc2 - (lr_x) < one_plus_eps ||
-			ul_y < 0.0f || nr2 - (ul_y) < one_plus_eps ||
+			ur_x < 0.0f || nc2 - (ur_x) + 1 < one_plus_eps ||
+			lr_x < 0.0f || nc2 - (lr_x) + 1 < one_plus_eps ||
+			ul_y < 0.0f || nr2 - (ul_y) + 1 < one_plus_eps ||
 			ll_y < 0.0f || nr2 - (ll_y) < one_plus_eps ||
-			ur_y < 0.0f || nr2 - (ur_y) < one_plus_eps ||
+			ur_y < 0.0f || nr2 - (ur_y) + 1 < one_plus_eps ||
 			lr_y < 0.0f || nr2 - (lr_y) < one_plus_eps) {
 			status = KLT_OOB;
 			break;
@@ -1114,14 +1114,15 @@ static int myTrackFeatureAffine(
 		float lr_x_new = *Axx * hw + *Axy * (-hh) + *x2;
 		float lr_y_new = *Ayx * hw + *Ayy * (-hh) + *y2;
 
-		if (
+		if (x1 - hw < 0.0f || nc1 - (x1 + hw) < one_plus_eps ||
+			y1 - hh < 0.0f || nr1 - (y1 + hh) < one_plus_eps ||
 			ul_x_new < 0.0f || nc2 - (ul_x_new) < one_plus_eps ||
 			ll_x_new < 0.0f || nc2 - (ll_x_new) < one_plus_eps ||
-			ur_x_new < 0.0f || nc2 - (ur_x_new) < one_plus_eps ||
-			lr_x_new < 0.0f || nc2 - (lr_x_new) < one_plus_eps ||
-			ul_y_new < 0.0f || nr2 - (ul_y_new) < one_plus_eps ||
+			ur_x_new < 0.0f || nc2 - (ur_x_new) + 1 < one_plus_eps ||
+			lr_x_new < 0.0f || nc2 - (lr_x_new) + 1 < one_plus_eps ||
+			ul_y_new < 0.0f || nr2 - (ul_y_new) + 1 < one_plus_eps ||
 			ll_y_new < 0.0f || nr2 - (ll_y_new) < one_plus_eps ||
-			ur_y_new < 0.0f || nr2 - (ur_y_new) < one_plus_eps ||
+			ur_y_new < 0.0f || nr2 - (ur_y_new) + 1 < one_plus_eps ||
 			lr_y_new < 0.0f || nr2 - (lr_y_new) < one_plus_eps) {
 			status = KLT_OOB;
 			break;
@@ -1163,8 +1164,8 @@ static int myTrackFeatureAffine(
 	_am_free_matrix(a);
 
 	/* Check whether window is out of bounds */
-	if (*x2 - hw < 0.0f || nc2 - (*x2 + hw) < one_plus_eps ||
-		*y2 - hh < 0.0f || nr2 - (*y2 + hh) < one_plus_eps)
+	if (*x2 - hw < 0.0f || nc2 - (*x2 + hw) + 1 < one_plus_eps ||
+		*y2 - hh < 0.0f || nr2 - (*y2 + hh) + 1 < one_plus_eps)
 		status = KLT_OOB;
 
 	///* Check whether feature point has moved to much during iteration*/
@@ -1915,7 +1916,6 @@ void myTrackAffine(
 		featurelist->feature[indx]->aff_x = xlocout;
 		featurelist->feature[indx]->aff_y = ylocout;
 		featurelist->feature[indx]->val = val;
-
 
 	}
 }
