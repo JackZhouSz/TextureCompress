@@ -99,7 +99,6 @@ void CreatingCharts()
 {
     vector<set<pair<int, int> > >tmpCover(blocks.size()), inverseCover(blocks.size()); // blockIndex & matchIndex
     vector<set<int> >candidateRegion(blocks.size());
-    set<int> Ie,epitome;
 
     Mat img = imread(imgPath, 1);
     int colBlockNum = img.cols / blockSize;
@@ -149,44 +148,115 @@ void CreatingCharts()
         }
     }
 
+    set<int> Ie, epitome;
+    vector<int> flag(blocks.size(), 0);
     while (Ie.size() != blocks.size()) {
         set<int> nowChart, nextChart;
         int maxCoverIndex = 0, maxTmp = 0;
         for (int index = 0; index < blocks.size(); index++) {
-            if (Ie.find(index) == Ie.end() && inverseCover[index].size() > maxTmp) {
-                maxTmp = inverseCover[index].size();
-                maxCoverIndex = index;
+            if (Ie.find(index) == Ie.end()) {
+                int count = 0;
+                for (set<pair<int, int> >::iterator it = inverseCover[index].begin(); it != inverseCover[index].end(); it++) {
+                    if (Ie.find(it->first) == Ie.end()) count++;
+                }
+                if (count > maxTmp) {
+                    maxTmp = count;
+                    maxCoverIndex = index;
+                }
             }
         }
 
+        int cost = 0;
         for (set<int>::iterator it = candidateRegion[maxCoverIndex].begin(); it != candidateRegion[maxCoverIndex].end(); it++) {
-            Ie.insert(*it);
-            epitome.insert(*it);
-            nowChart.insert(*it);
-        }
-
-        for (set<pair<int, int> >::iterator it = inverseCover[maxCoverIndex].begin(); it != inverseCover[maxCoverIndex].end(); it++) {
-            Ie.insert(it->first);
-        }
-
-        vector<int> flag(blocks.size(), 0);
-        // growth chart with block's candidates
-        // search blocks inside or adjacent to current chart
-        for (set<int>::iterator it = nowChart.begin(); it != nowChart.end(); it++) {
-            // toDo Check Boarder
-            int a = *it - 1;
-            int b = *it + 1;
-            int c = *it - colBlockNum;
-            int d = *it + colBlockNum;
-            if (flag[a] == 0 && a >= 0) {
-                set<int> tmpChart = nowChart;
-                //要求引入某个block的canndiate j后带来的额外Cj消耗小于可以更多压缩的块数
+            if (epitome.find(*it) == epitome.end()) {
+                cost++;
             }
+
         }
 
+        if (cost > maxTmp) {
+            Ie.insert(maxCoverIndex);
+            epitome.insert(maxCoverIndex);
+        }
+        else {
+            for (set<int>::iterator it = candidateRegion[maxCoverIndex].begin(); it != candidateRegion[maxCoverIndex].end(); it++) {
+                Ie.insert(*it);
+                epitome.insert(*it);
+                nowChart.insert(*it);
+            }
+
+            for (set<pair<int, int> >::iterator it = inverseCover[maxCoverIndex].begin(); it != inverseCover[maxCoverIndex].end(); it++) {
+                Ie.insert(it->first);
+            }
+
+
+            nextChart = nowChart;
+            // growth chart with block's candidates
+            // search blocks inside or adjacent to current chart
+            for (set<int>::iterator it = nowChart.begin(); it != nowChart.end(); it++) {
+                // toDo Check Boarder
+                vector<int> tmpIndex;
+                if (flag[*it] == 0)
+                    tmpIndex.push_back(*it);
+                int j = *it / colBlockNum, i = *it - j * colBlockNum;
+                if (i >= 1 && flag[*it - 1] == 0)
+                    tmpIndex.push_back(*it - 1);
+                if (i < colBlockNum - 1 && flag[*it + 1] == 0)
+                    tmpIndex.push_back(*it + 1);
+                if (j >= 1 && flag[*it - colBlockNum] == 0)
+                    tmpIndex.push_back(*it - colBlockNum);
+                if (j < rowBlockNum - 1 && flag[*it + colBlockNum] == 0)
+                    tmpIndex.push_back(*it + colBlockNum);
+
+                for (int i = 0; i < tmpIndex.size(); i++)
+                {
+                    int a = tmpIndex[i];
+                    flag[a] = 1;
+                    int cost = 0, benefit = 0;
+                    for (set<int>::iterator it = candidateRegion[a].begin(); it != candidateRegion[a].end(); it++) {
+                        if (epitome.find(*it) == epitome.end()) {
+                            cost++;
+                        }
+
+                    }
+                    for (set<pair<int, int> >::iterator it = inverseCover[a].begin(); it != inverseCover[a].end(); it++) {
+                        if (Ie.find(it->first) == Ie.end()) {
+                            benefit++;
+                        }
+                    }
+
+                    //要求引入某个block的canndiate j后带来的额外Cj消耗小于可以更多压缩的块数
+                    if (benefit > cost) {
+                        for (set<int>::iterator it = candidateRegion[a].begin(); it != candidateRegion[a].end(); it++) {
+                            Ie.insert(*it);
+                            epitome.insert(*it);
+                            nextChart.insert(*it);
+                        }
+                        for (set<pair<int, int> >::iterator it = inverseCover[a].begin(); it != inverseCover[a].end(); it++) {
+                            Ie.insert(it->first);
+                        }
+                    }
+                }
+            }
+            nowChart = nextChart;
+        }
+        
     }
     
+    // Reconstructed Test
+    Mat imgTest(img.rows, img.cols, CV_8UC3);
+    namedWindow("Test");
 
+    for (set<int>::iterator it = epitome.begin(); it != epitome.end(); it++) {
+        for (int row = -blockSize / 2; row < blockSize / 2; row++) {
+            for (int col = -blockSize / 2; col < blockSize / 2; col++) {
+                imgTest.at<Vec3b>(row + blocks[*it]->getStartHeight() + blockSize / 2, col + blocks[*it]->getStartWidth() + blockSize / 2) = img.at<Vec3b>(row + blocks[*it]->getStartHeight() + blockSize / 2, col + blocks[*it]->getStartWidth() + blockSize / 2);
+            }
+        }
+    }
+
+    imshow("image", imgTest);
+    waitKey();
 
 
     return;
