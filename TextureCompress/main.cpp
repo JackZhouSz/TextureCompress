@@ -1,5 +1,6 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
+#include <thread>
 #include <cmath>
 #include <algorithm>
 #include <Windows.h>
@@ -14,7 +15,7 @@
 using namespace std;
 using namespace cv;
 
-
+int threadNum = 16;
 int blockSize = 12;
 float NMSth = 50.0f;
 int matchNum = 0;
@@ -32,65 +33,46 @@ bool myCompare(pair<pair<float, float>, pair<float, int> > a, pair<pair<float, f
     return a.second.first < b.second.first;
 }
 
-void FindingSimi()
-{
-    uchar* img;
-    KLT_TrackingContext tc;
-    KLT_FeatureList testFl;
-
-    int ncols, nrows;
-
-    img = imgRead(imgPath, &ncols, &nrows);
-
-    tc = KLTCreateTrackingContext();
-
-    testFl = initialAffineTrack(blocks,matchNum);
-    myTrackAffine(tc, img, ncols, nrows, testFl);
-
-
-    vector<vector<pair<pair<float, float>, pair<float,int> > > >NMSlist(blocks.size()), affineList(blocks.size());
-
-    for (int i = 0; i < testFl->nFeatures; i++){
-        if (testFl->feature[i]->val == KLT_TRACKED) {
-            //Apply NMS
-            NMSlist[testFl->feature[i]->block_index].push_back(make_pair(make_pair(testFl->feature[i]->aff_x, testFl->feature[i]->aff_y), make_pair(testFl->feature[i]->error, i)));
+void FindInitMatch(int start, int end) {
+    // color histogram simi
+    for (int index = start; index < end; index++) {
+        printf("\rcompute block simi[%.2f%%]", (index-start) * 100.0 / (end-start));
+        for (int i = 0; i < seedBlocks.size(); i++)
+        {
+            int compare_method = 0; //Correlation ( CV_COMP_CORREL )
+            double simi = compareHist(blocks[index]->getHist(), seedBlocks[i]->getHist(), compare_method);
+            //cout << i << " simi:" << simi << endl;
+            if (simi > 0.5) {
+                //cout << i << " simi:" << simi << endl;
+                float testTheta = guessTheta(blocks[index]->getHog(), seedBlocks[i]->getHog());
+                //cout << "index " << i << " theta " << testTheta << endl;
+                int scale = 1;
+                Point2f move = Point2f(seedBlocks[i]->getStartWidth() - blocks[index]->getStartWidth(),
+                    seedBlocks[i]->getStartHeight() - blocks[index]->getStartHeight());
+                blocks[index]->addInitMatch(move, testTheta, scale);
+                matchNum++;
+            }
         }
-
     }
+}
 
-    //Apply NMS for each Block's matchlist
-    for (int i = 0; i < blocks.size(); i++) {
-        if (!NMSlist[i].size()) continue;
 
-        sort(NMSlist[i].begin(), NMSlist[i].end(), myCompare);
-        affineList[i].push_back(NMSlist[i][0]);
-        for (int index = 1; index < NMSlist[i].size(); index++) {
-            float minDist = 1e9;
-            for (int j = 0; j < affineList[i].size(); j++) {
-                float tmpDist = pow(affineList[i][j].first.first - NMSlist[i][index].first.first, 2) +
-                    pow(affineList[i][j].first.second - NMSlist[i][index].first.second, 2);
-                if (tmpDist < minDist)
-                    minDist = tmpDist;
-            }
-            if (minDist > NMSth) {
-                affineList[i].push_back(NMSlist[i][index]);
-            }
-        }
+void FindingSimi(int start, int end, uchar* img, int ncols, int nrows, KLT_FeatureList& testFl)
+{
+    KLT_TrackingContext tc;
 
-        for (int j = 0; j < affineList[i].size(); j++) {
-            int featureIndex = affineList[i][j].second.second;
-            Mat M = Mat::zeros(cv::Size(2, 3), CV_64F);
-            double* m = M.ptr<double>();
-            m[0] = testFl->feature[featureIndex]->aff_Axx;
-            m[1] = testFl->feature[featureIndex]->aff_Axy;
-            m[2] = testFl->feature[featureIndex]->aff_x;
-            m[3] = testFl->feature[featureIndex]->aff_Ayx;
-            m[4] = testFl->feature[featureIndex]->aff_Ayy;
-            m[5] = testFl->feature[featureIndex]->aff_y;
-            blocks[i]->finalMatchList.push_back(Match(M));
-        }
+    int tmpMatchNum = 0;
+    vector<Block*>::const_iterator first = blocks.begin() + start;
+    vector<Block*>::const_iterator last = blocks.begin() + end;
+    vector<Block*> tmpBlocks(first, last);
+    for (vector<Block*>::iterator it = tmpBlocks.begin(); it != tmpBlocks.end(); it++) {
+        tmpMatchNum += (*it)->initMatchList.size();
     }
     
+    tc = KLTCreateTrackingContext();
+    testFl = initialAffineTrack(tmpBlocks,tmpMatchNum);
+    myTrackAffine(tc, img, ncols, nrows, testFl);
+
     return ;
 
 }
@@ -264,8 +246,65 @@ void CreatingCharts()
 
 int main(int argc, char* argv[]) {
 
+    uchar* img;
+    int ncols, nrows;
+    KLT_FeatureList testFl[16] = { nullptr };
 
-    FindingSimi();
+    img = imgRead(imgPath, &ncols, &nrows);
+    FindingSimi(0, blocks.size(), img, ncols, nrows, testFl[0]);
+    //thread t[16];
+    //for (int i = 0; i < threadNum; i++) {
+    //    t[i] = thread(FindingSimi, i * blocks.size() / threadNum, (i + 1) * blocks.size() / threadNum, img, ncols, nrows);
+    //}
+    //for (int i = 0; i < threadNum; i++) {
+    //    t[i].join();
+    //}
+
+    vector<vector<pair<pair<float, float>, pair<float, int> > > >NMSlist(blocks.size()), affineList(blocks.size());
+
+    for (int index = 0; index < 1; index++) {
+        for (int i = 0; i < testFl[index]->nFeatures; i++) {
+            if (testFl[index]->feature[i]->val == KLT_TRACKED) {
+                //Apply NMS
+                NMSlist[testFl[index]->feature[i]->block_index].push_back(make_pair(make_pair(testFl[index]->feature[i]->aff_x, testFl[index]->feature[i]->aff_y), make_pair(testFl[index]->feature[i]->error, i)));
+            }
+
+        }
+
+        //Apply NMS for each Block's matchlist
+        for (int i = 0; i < blocks.size(); i++) {
+            if (!NMSlist[i].size()) continue;
+
+            sort(NMSlist[i].begin(), NMSlist[i].end(), myCompare);
+            affineList[i].push_back(NMSlist[i][0]);
+            for (int index = 1; index < NMSlist[i].size(); index++) {
+                float minDist = 1e9;
+                for (int j = 0; j < affineList[i].size(); j++) {
+                    float tmpDist = pow(affineList[i][j].first.first - NMSlist[i][index].first.first, 2) +
+                        pow(affineList[i][j].first.second - NMSlist[i][index].first.second, 2);
+                    if (tmpDist < minDist)
+                        minDist = tmpDist;
+                }
+                if (minDist > NMSth) {
+                    affineList[i].push_back(NMSlist[i][index]);
+                }
+            }
+
+            for (int j = 0; j < affineList[i].size(); j++) {
+                int featureIndex = affineList[i][j].second.second;
+                Mat M = Mat::zeros(cv::Size(2, 3), CV_64F);
+                double* m = M.ptr<double>();
+                m[0] = testFl[index]->feature[featureIndex]->aff_Axx;
+                m[1] = testFl[index]->feature[featureIndex]->aff_Axy;
+                m[2] = testFl[index]->feature[featureIndex]->aff_x;
+                m[3] = testFl[index]->feature[featureIndex]->aff_Ayx;
+                m[4] = testFl[index]->feature[featureIndex]->aff_Ayy;
+                m[5] = testFl[index]->feature[featureIndex]->aff_y;
+                blocks[i]->finalMatchList.push_back(Match(M));
+            }
+        }
+    }
+    
 
     // Reconstructed Test
     /*Mat img = imread(imgPath, 1);
@@ -299,6 +338,7 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
+
 uchar* imgRead(const string imgPath, int* ncols, int* nrows)
 {
     uchar* ptr;
@@ -328,31 +368,13 @@ uchar* imgRead(const string imgPath, int* ncols, int* nrows)
         }
     }
 
-
-    // color histogram simi
-    for (int index = 0; index < blocks.size(); index++) {
-        printf("\rcompute block simi[%.2f%%]", index * 100.0 / (blocks.size() - 1));
-        for (int i = 0; i < seedBlocks.size(); i++)
-        {
-            Mat imgTest = img.clone();
-            int compare_method = 0; //Correlation ( CV_COMP_CORREL )
-            double simi = compareHist(blocks[index]->getHist(), seedBlocks[i]->getHist(), compare_method);
-            //cout << i << " simi:" << simi << endl;
-            if (simi > 0.5) {
-                //cout << i << " simi:" << simi << endl;
-                float testTheta = guessTheta(blocks[index]->getHog(), seedBlocks[i]->getHog());
-                //cout << "index " << i << " theta " << testTheta << endl;
-                int scale = 1;
-                Point2f move = Point2f(seedBlocks[i]->getStartWidth() - blocks[index]->getStartWidth(),
-                    seedBlocks[i]->getStartHeight() - blocks[index]->getStartHeight());
-                blocks[index]->addInitMatch(move, testTheta, scale);
-                matchNum++;
-            }
-        }
+    thread t[16];
+    for (int i = 0; i < threadNum; i++) {
+        t[i] = thread(FindInitMatch, i * blocks.size() / threadNum, (i + 1) * blocks.size() / threadNum);
     }
-
-    
-
+    for (int i = 0; i < threadNum; i++) {
+        t[i].join();
+    }
 
     *ncols = img.cols;
     *nrows = img.rows;

@@ -8,6 +8,7 @@
 #include <math.h>		/* fabs() */
 #include <stdlib.h>		/* malloc() */
 #include <stdio.h>		/* fflush() */
+#include <iostream>
 
 /* Our includes */
 #include "base.h"
@@ -21,6 +22,7 @@ extern int KLT_verbose;
 
 typedef float* _FloatWindow;
 
+using namespace std;
 /*********************************************************************
  * _interpolate
  *

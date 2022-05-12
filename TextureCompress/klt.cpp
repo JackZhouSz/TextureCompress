@@ -192,8 +192,6 @@ KLT_FeatureList initialAffineTrack(vector<Block*> blocks,int matchNum)
     first = (KLT_Feature)(fl->feature + matchNum);
 
 
-    
-    
     for (int index = 0; index < blocks.size(); index++) {
         for (int j = 0; j < blocks[index]->initMatchList.size(); j++) {
             fl->feature[i] = first + i;
