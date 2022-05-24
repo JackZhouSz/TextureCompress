@@ -23,6 +23,8 @@ extern int KLT_verbose;
 typedef float* _FloatWindow;
 
 using namespace std;
+
+
 /*********************************************************************
  * _interpolate
  *
@@ -1835,7 +1837,6 @@ void myTrackAffine(
 			"Changing to %d.\n", tc->window_height);
 	}
 
-	
 	/* Create temporary image */
 	tmpimg = _KLTCreateFloatImage(ncols, nrows);
 	/* Process first image by converting to float, smoothing, computing */
@@ -1894,6 +1895,7 @@ void myTrackAffine(
 		_am_getSubFloatImage(pyramid_gradx->img[0], xloc, yloc, featurelist->feature[indx]->aff_img_gradx);
 		_am_getSubFloatImage(pyramid_grady->img[0], xloc, yloc, featurelist->feature[indx]->aff_img_grady);
 	
+
 		/* affine tracking */
 		val = myTrackFeatureAffine(tc->affine_window_width/ 2, tc->affine_window_height/ 2,
 			&xlocout, &ylocout,

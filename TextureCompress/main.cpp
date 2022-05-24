@@ -19,15 +19,18 @@ int threadNum = 16;
 int blockSize = 12;
 int ncols, nrows;
 
+
 KLT_FeatureList testFl[16] = { nullptr };
 
 float NMSth = 50.0f;
+float simiThread = 0.5;
 int matchNum = 0;
 vector<Block*> blocks;
 vector<Block*> seedBlocks;
 
+mutex mtx; // protect img
 
-const string imgPath = "..\\Resource\\orig1.png";
+const string imgPath = "..\\Resource\\orig2.png";
 
 uchar* imgRead(const string imgPath, int* ncols, int* nrows);
 
@@ -45,7 +48,7 @@ void FindInitMatch(int start, int end) {
             int compare_method = 0; //Correlation ( CV_COMP_CORREL )
             double simi = compareHist(blocks[index]->getHist(), seedBlocks[i]->getHist(), compare_method);
             //cout << i << " simi:" << simi << endl;
-            if (simi > 0.5) {
+            if (simi > simiThread) {
                 //cout << i << " simi:" << simi << endl;
                 float testTheta = guessTheta(blocks[index]->getHog(), seedBlocks[i]->getHog());
                 //cout << "index " << i << " theta " << testTheta << endl;
@@ -64,13 +67,15 @@ void FindingSimi(int start, int end, uchar* img, int threadIndex)
     KLT_TrackingContext tc;
 
     int tmpMatchNum = 0;
+    mtx.lock();
     vector<Block*>::const_iterator first = blocks.begin() + start;
     vector<Block*>::const_iterator last = blocks.begin() + end;
     vector<Block*> tmpBlocks(first, last);
     for (vector<Block*>::iterator it = tmpBlocks.begin(); it != tmpBlocks.end(); it++) {
         tmpMatchNum += (*it)->initMatchList.size();
     }
-    
+    mtx.unlock();
+
     tc = KLTCreateTrackingContext();
     testFl[threadIndex] = initialAffineTrack(tmpBlocks, tmpMatchNum, start);
     myTrackAffine(tc, img, ncols, nrows, testFl[threadIndex]);
@@ -81,9 +86,9 @@ void FindingSimi(int start, int end, uchar* img, int threadIndex)
 
 void CreatingCharts()
 {
-    vector<int> matchRecord(blocks.size());
+    vector<int> matchRecord(blocks.size(), 1e9);
     vector<set<pair<int, int> > >tmpCover(blocks.size()), inverseCover(blocks.size()); // blockIndex & matchIndex
-    vector<set<int> >candidateRegion(blocks.size());
+    vector<set<int> >candidateRegion(blocks.size()); // blockIndex & matchIndex
 
     Mat img = imread(imgPath, 1);
     int colBlockNum = img.cols / blockSize;
@@ -161,30 +166,33 @@ void CreatingCharts()
             if (epitome.find(*it) == epitome.end()) {
                 cost++;
             }
-
         }
         if (cost > maxTmp) {
             Ie.insert(maxCoverIndex);
             epitome.insert(maxCoverIndex);
             nowChart.insert(maxCoverIndex);
             chartSet.push_back(nowChart);
+            //matchRecord[maxCoverIndex] = 0;
         }
         else {
             for (set<int>::iterator it = candidateRegion[maxCoverIndex].begin(); it != candidateRegion[maxCoverIndex].end(); it++) {
                 Ie.insert(*it);
                 epitome.insert(*it);
                 nowChart.insert(*it);
+                //matchRecord[*it] = 0;
             }
 
             for (set<pair<int, int> >::iterator it = inverseCover[maxCoverIndex].begin(); it != inverseCover[maxCoverIndex].end(); it++) {
                 Ie.insert(it->first);
+                if (it->second < matchRecord[it->first])
+                    matchRecord[it->first] = it->second;
             }
 
             nextChart = nowChart;
             // growth chart with block's candidates
             // search blocks inside or adjacent to current chart
             for (set<int>::iterator it = nowChart.begin(); it != nowChart.end(); it++) {
-                // toDo Check Boarder
+                // Check Boarder
                 vector<int> tmpIndex;
                 if (flag[*it] == 0)
                     tmpIndex.push_back(*it);
@@ -221,9 +229,12 @@ void CreatingCharts()
                             Ie.insert(*it);
                             epitome.insert(*it);
                             nextChart.insert(*it);
+                            //matchRecord[*it] = 0;
                         }
                         for (set<pair<int, int> >::iterator it = inverseCover[a].begin(); it != inverseCover[a].end(); it++) {
                             Ie.insert(it->first);
+                            if (it->second < matchRecord[it->first])
+                                matchRecord[it->first] = it->second;
                         }
                     }
                 }
@@ -234,6 +245,31 @@ void CreatingCharts()
         
     }
     
+    // Optimizing the transform map
+    for (int index = 0; index < blocks.size(); index++) {
+        for (int i = 0; i < blocks[index]->finalMatchList.size() && i < matchRecord[index]; i++) {
+            Mat M = blocks[index]->finalMatchList[i].getMatrix();
+            double* m = M.ptr<double>();
+            bool flag = true;
+            for (int row = -blockSize / 2; row < blockSize / 2; row++) {
+                for (int col = -blockSize / 2; col < blockSize / 2; col++) {
+                    int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
+                    int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
+                    int coverIndex = tmpRow / blockSize * colBlockNum + tmpCol / blockSize;
+                    if (epitome.find(coverIndex) == epitome.end()) {
+                        flag = false;
+                        break;
+                    }
+                }
+                if (flag == false) break;
+            }
+            if (flag == true) {
+                matchRecord[index] = i;
+                break;
+            }
+        }
+    }
+
     // Reconstructed Test
     Mat imgTest(img.rows, img.cols, CV_8UC3);
     namedWindow("Test");
@@ -250,19 +286,53 @@ void CreatingCharts()
     imshow("image", imgTest);
     waitKey();
 
+    // Reconstructed Test
+    Mat imgRecon(img.rows, img.cols, CV_8UC3);
+    namedWindow("ReconstructedTest");
 
-     return;
+    for (int i = 0; i < blocks.size(); i++) {
+        Mat M = blocks[i]->finalMatchList[matchRecord[i]].getMatrix();
+        double* m = M.ptr<double>();
+        for (int row = -blockSize / 2; row < blockSize / 2; row++) {
+            for (int col = -blockSize / 2; col < blockSize / 2; col++) {
+                int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
+                int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
+                if (tmpCol < img.cols && tmpCol >= 0 && tmpRow < img.rows && tmpRow >= 0) {
+                    imgRecon.at<Vec3b>(row + blocks[i]->getStartHeight() + blockSize / 2, 
+                        col + blocks[i]->getStartWidth() + blockSize / 2) = imgTest.at<Vec3b>(tmpRow, tmpCol);
+                }
+
+            }
+        }
+    }
+    imwrite("..\\Resource\\imgRecon.png", imgRecon);
+    imshow("imgRecon", imgRecon);
+    waitKey();
+
+
+      return;
 }
 
 int main(int argc, char* argv[]) {
 
-    uchar* img = imgRead(imgPath, &ncols, &nrows);
+    
+    uchar* initImg = imgRead(imgPath, &ncols, &nrows);
+
+    vector<uchar*> img(threadNum);
+    for (int index = 0; index < threadNum; index++) {
+        img[index] = (uchar*)malloc((ncols) * (nrows) * sizeof(char));
+        // copy img content
+        int i;
+        for (i = 0; i < (ncols) * (nrows); i++) {
+            *(img[index] + i) = *(initImg + i);
+        }
+    }
 
     vector<thread> t(threadNum);
     // why more threads wrong?
-    threadNum = 1;
+    // threadNum = 1;
     for (int i = 0; i < threadNum; i++) {
-        t[i] = thread(FindingSimi, i * blocks.size() / threadNum, (i + 1) * blocks.size() / threadNum, img, i);
+        t[i] = thread(FindingSimi, i * blocks.size() / threadNum, (i + 1) * blocks.size() / threadNum, img[i], i);
     }
     for (int i = 0; i < threadNum; i++) {
         t[i].join();
@@ -315,9 +385,9 @@ int main(int argc, char* argv[]) {
         }
     }
 
-
-    
-    
+    for (int i = 0; i < blocks.size(); i++) {
+        blocks[i]->initMatchList.clear();
+    }
 
     // Reconstructed Test
     /*Mat img = imread(imgPath, 1);
