@@ -1874,6 +1874,9 @@ void myTrackAffine(
 
 		printf("\rcompute feature affine [%.2f%%]", indx * 100.0 / (featurelist->nFeatures - 1));
 
+		if (indx * 100.0 / (featurelist->nFeatures - 1) >= 91)
+			int xi = 0;
+
 		xloc = featurelist->feature[indx]->x;
 		yloc = featurelist->feature[indx]->y;
 

@@ -17,6 +17,10 @@ using namespace cv;
 
 int threadNum = 16;
 int blockSize = 12;
+int ncols, nrows;
+
+KLT_FeatureList testFl[16] = { nullptr };
+
 float NMSth = 50.0f;
 int matchNum = 0;
 vector<Block*> blocks;
@@ -24,7 +28,6 @@ vector<Block*> seedBlocks;
 
 
 const string imgPath = "..\\Resource\\orig1.png";
-
 
 uchar* imgRead(const string imgPath, int* ncols, int* nrows);
 
@@ -56,8 +59,7 @@ void FindInitMatch(int start, int end) {
     }
 }
 
-
-void FindingSimi(int start, int end, uchar* img, int ncols, int nrows, KLT_FeatureList& testFl)
+void FindingSimi(int start, int end, uchar* img, int threadIndex)
 {
     KLT_TrackingContext tc;
 
@@ -70,8 +72,8 @@ void FindingSimi(int start, int end, uchar* img, int ncols, int nrows, KLT_Featu
     }
     
     tc = KLTCreateTrackingContext();
-    testFl = initialAffineTrack(tmpBlocks,tmpMatchNum);
-    myTrackAffine(tc, img, ncols, nrows, testFl);
+    testFl[threadIndex] = initialAffineTrack(tmpBlocks, tmpMatchNum, start);
+    myTrackAffine(tc, img, ncols, nrows, testFl[threadIndex]);
 
     return ;
 
@@ -79,6 +81,7 @@ void FindingSimi(int start, int end, uchar* img, int ncols, int nrows, KLT_Featu
 
 void CreatingCharts()
 {
+    vector<int> matchRecord(blocks.size());
     vector<set<pair<int, int> > >tmpCover(blocks.size()), inverseCover(blocks.size()); // blockIndex & matchIndex
     vector<set<int> >candidateRegion(blocks.size());
 
@@ -88,6 +91,7 @@ void CreatingCharts()
 
     // compute inverseCover
     for (int index = 0; index < blocks.size(); index++) {
+        printf("\r compute inverseCover [%.2f%%]", index * 100.0 / blocks.size());
         for (int i = 0; i < blocks[index]->finalMatchList.size(); i++) {
             Mat M = blocks[index]->finalMatchList[i].getMatrix();
             double* m = M.ptr<double>();
@@ -96,11 +100,13 @@ void CreatingCharts()
                     int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
                     int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
                     int coverIndex = tmpRow / blockSize * colBlockNum + tmpCol / blockSize;
-                    tmpCover[coverIndex].insert(make_pair(index, i));
+                    if (coverIndex < tmpCover.size())
+                        tmpCover[coverIndex].insert(make_pair(index, i));
                 }
             }
         }
     }
+
     // make sure one block's match show only once
     for (int index = 0; index < blocks.size(); index++) {
         int preIndex = -1;
@@ -115,6 +121,7 @@ void CreatingCharts()
     }
     // compute candidateRegion
     for (int index = 0; index < blocks.size(); index++) {
+        printf("\r compute candidateRegion [%.2f%%]", index * 100.0 / blocks.size());
         for (set<pair<int, int> >::iterator it = inverseCover[index].begin(); it != inverseCover[index].end(); it++) {
             
             Mat M = blocks[it->first]->finalMatchList[it->second].getMatrix();
@@ -131,8 +138,10 @@ void CreatingCharts()
     }
 
     set<int> Ie, epitome;
+    vector<set<int> > chartSet;
     vector<int> flag(blocks.size(), 0);
     while (Ie.size() != blocks.size()) {
+        printf("\r compute epitome [%.2f%%]", Ie.size() * 100.0 / blocks.size());
         set<int> nowChart, nextChart;
         int maxCoverIndex = 0, maxTmp = 0;
         for (int index = 0; index < blocks.size(); index++) {
@@ -147,7 +156,6 @@ void CreatingCharts()
                 }
             }
         }
-
         int cost = 0;
         for (set<int>::iterator it = candidateRegion[maxCoverIndex].begin(); it != candidateRegion[maxCoverIndex].end(); it++) {
             if (epitome.find(*it) == epitome.end()) {
@@ -155,10 +163,11 @@ void CreatingCharts()
             }
 
         }
-
         if (cost > maxTmp) {
             Ie.insert(maxCoverIndex);
             epitome.insert(maxCoverIndex);
+            nowChart.insert(maxCoverIndex);
+            chartSet.push_back(nowChart);
         }
         else {
             for (set<int>::iterator it = candidateRegion[maxCoverIndex].begin(); it != candidateRegion[maxCoverIndex].end(); it++) {
@@ -170,7 +179,6 @@ void CreatingCharts()
             for (set<pair<int, int> >::iterator it = inverseCover[maxCoverIndex].begin(); it != inverseCover[maxCoverIndex].end(); it++) {
                 Ie.insert(it->first);
             }
-
 
             nextChart = nowChart;
             // growth chart with block's candidates
@@ -221,6 +229,7 @@ void CreatingCharts()
                 }
             }
             nowChart = nextChart;
+            chartSet.push_back(nowChart);
         }
         
     }
@@ -237,42 +246,43 @@ void CreatingCharts()
         }
     }
 
+    imwrite("..\\Resource\\test.png", imgTest);
     imshow("image", imgTest);
     waitKey();
 
 
-    return;
+     return;
 }
 
 int main(int argc, char* argv[]) {
 
-    uchar* img;
-    int ncols, nrows;
-    KLT_FeatureList testFl[16] = { nullptr };
+    uchar* img = imgRead(imgPath, &ncols, &nrows);
 
-    img = imgRead(imgPath, &ncols, &nrows);
-    FindingSimi(0, blocks.size(), img, ncols, nrows, testFl[0]);
-    //thread t[16];
-    //for (int i = 0; i < threadNum; i++) {
-    //    t[i] = thread(FindingSimi, i * blocks.size() / threadNum, (i + 1) * blocks.size() / threadNum, img, ncols, nrows);
-    //}
-    //for (int i = 0; i < threadNum; i++) {
-    //    t[i].join();
-    //}
+    vector<thread> t(threadNum);
+    // why more threads wrong?
+    threadNum = 1;
+    for (int i = 0; i < threadNum; i++) {
+        t[i] = thread(FindingSimi, i * blocks.size() / threadNum, (i + 1) * blocks.size() / threadNum, img, i);
+    }
+    for (int i = 0; i < threadNum; i++) {
+        t[i].join();
+    }
 
     vector<vector<pair<pair<float, float>, pair<float, int> > > >NMSlist(blocks.size()), affineList(blocks.size());
 
-    for (int index = 0; index < 1; index++) {
-        for (int i = 0; i < testFl[index]->nFeatures; i++) {
-            if (testFl[index]->feature[i]->val == KLT_TRACKED) {
-                //Apply NMS
-                NMSlist[testFl[index]->feature[i]->block_index].push_back(make_pair(make_pair(testFl[index]->feature[i]->aff_x, testFl[index]->feature[i]->aff_y), make_pair(testFl[index]->feature[i]->error, i)));
+    for (int threadIndex = 0; threadIndex < threadNum; threadIndex++) {
+        for (int i = 0; i < testFl[threadIndex]->nFeatures; i++) {
+            if (testFl[threadIndex]->feature[i]->val == KLT_TRACKED) {
+                // Init NMS
+                NMSlist[testFl[threadIndex]->feature[i]->block_index].push_back(
+                    make_pair(make_pair(testFl[threadIndex]->feature[i]->aff_x, 
+                        testFl[threadIndex]->feature[i]->aff_y), 
+                    make_pair(testFl[threadIndex]->feature[i]->error, i)));
             }
-
         }
 
         //Apply NMS for each Block's matchlist
-        for (int i = 0; i < blocks.size(); i++) {
+        for (int i = threadIndex * blocks.size() / threadNum; i < (threadIndex + 1) * blocks.size() / threadNum; i++) {
             if (!NMSlist[i].size()) continue;
 
             sort(NMSlist[i].begin(), NMSlist[i].end(), myCompare);
@@ -294,16 +304,19 @@ int main(int argc, char* argv[]) {
                 int featureIndex = affineList[i][j].second.second;
                 Mat M = Mat::zeros(cv::Size(2, 3), CV_64F);
                 double* m = M.ptr<double>();
-                m[0] = testFl[index]->feature[featureIndex]->aff_Axx;
-                m[1] = testFl[index]->feature[featureIndex]->aff_Axy;
-                m[2] = testFl[index]->feature[featureIndex]->aff_x;
-                m[3] = testFl[index]->feature[featureIndex]->aff_Ayx;
-                m[4] = testFl[index]->feature[featureIndex]->aff_Ayy;
-                m[5] = testFl[index]->feature[featureIndex]->aff_y;
+                m[0] = testFl[threadIndex]->feature[featureIndex]->aff_Axx;
+                m[1] = testFl[threadIndex]->feature[featureIndex]->aff_Axy;
+                m[2] = testFl[threadIndex]->feature[featureIndex]->aff_x;
+                m[3] = testFl[threadIndex]->feature[featureIndex]->aff_Ayx;
+                m[4] = testFl[threadIndex]->feature[featureIndex]->aff_Ayy;
+                m[5] = testFl[threadIndex]->feature[featureIndex]->aff_y;
                 blocks[i]->finalMatchList.push_back(Match(M));
             }
         }
     }
+
+
+    
     
 
     // Reconstructed Test
@@ -368,7 +381,8 @@ uchar* imgRead(const string imgPath, int* ncols, int* nrows)
         }
     }
 
-    thread t[16];
+    // accelerate using thread
+    vector<thread> t(threadNum);
     for (int i = 0; i < threadNum; i++) {
         t[i] = thread(FindInitMatch, i * blocks.size() / threadNum, (i + 1) * blocks.size() / threadNum);
     }

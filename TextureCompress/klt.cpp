@@ -131,7 +131,7 @@ KLT_TrackingContext KLTCreateTrackingContext()
 
     /* Update border, which is dependent upon  */
     /* smooth_sigma_fact, pyramid_sigma_fact, window_size, and subsampling */
-    KLTUpdateTCBorder(tc);
+    // KLTUpdateTCBorder(tc);
 
     return(tc);
 }
@@ -172,7 +172,7 @@ KLT_FeatureList KLTCreateFeatureList(
     return(fl);
 }
 
-KLT_FeatureList initialAffineTrack(vector<Block*> blocks,int matchNum)
+KLT_FeatureList initialAffineTrack(vector<Block*> blocks, int matchNum, int blockStartIndex)
 {
     KLT_FeatureList fl;
     KLT_Feature first;
@@ -208,7 +208,7 @@ KLT_FeatureList initialAffineTrack(vector<Block*> blocks,int matchNum)
             fl->feature[i]->aff_Ayx = m[3];
             fl->feature[i]->aff_Ayy = m[4];
             fl->feature[i]->aff_y = m[5];
-            fl->feature[i]->block_index = index;
+            fl->feature[i]->block_index = index + blockStartIndex;
 
             i++;
         }

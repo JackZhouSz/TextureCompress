@@ -126,7 +126,7 @@ typedef struct {
  */
 
  /* Create */
-KLT_FeatureList initialAffineTrack(vector<Block*> blocks, int matchNum);
+KLT_FeatureList initialAffineTrack(vector<Block*> blocks, int matchNum, int blockStartIndex);
 KLT_TrackingContext KLTCreateTrackingContext(void);
 KLT_FeatureList KLTCreateFeatureList(
     int nFeatures);
