@@ -40,6 +40,7 @@ public:
     void addInitMatch(Point2f move, double angle, double scale);
 
     vector<Match> initMatchList,finalMatchList;
+    int equalBlock = -1;
 
 private:
     int index;

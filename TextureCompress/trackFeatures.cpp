@@ -22,6 +22,8 @@ extern int KLT_verbose;
 
 typedef float* _FloatWindow;
 
+#define Error -1e9 
+
 using namespace std;
 
 
@@ -37,6 +39,7 @@ static float _interpolate(
 	float y,
 	_KLT_FloatImage img)
 {
+
 	int xt = (int)x;  /* coordinates of top-left corner */
 	int yt = (int)y;
 	float ax = x - xt;
@@ -44,20 +47,27 @@ static float _interpolate(
 	float* ptr = img->data + (img->ncols * yt) + xt;
 
 #ifndef _DNDEBUG
-	if (xt < 0 || yt < 0 || xt > img->ncols - 1 || yt > img->nrows - 1) {
-		fprintf(stderr, "(xt,yt)=(%d,%d)  imgsize=(%d,%d)\n"
+	if (xt < 0 || yt < 0 || xt > img->ncols - 1 || yt > img->nrows - 1) {		fprintf(stderr, "(xt,yt)=(%d,%d)  imgsize=(%d,%d)\n"
 			"(x,y)=(%f,%f)  (ax,ay)=(%f,%f)\n",
 			xt, yt, img->ncols, img->nrows, x, y, ax, ay);
 		fflush(stderr);
+		//throw -1;
 	}
 #endif
 
 	assert(xt >= 0 && yt >= 0 && xt <= img->ncols - 1 && yt <= img->nrows - 1);
-
-	float res = ((1 - ax) * (1 - ay) * *ptr +
-		ax * (1 - ay) * *(ptr + 1) +
-		(1 - ax) * ay * *(ptr + (img->ncols)) +
-		ax * ay * *(ptr + (img->ncols) + 1));
+	
+	float res = 0;
+	if (yt == img->nrows - 1) {
+		res = ((1 - ax) * (1 - ay) * *ptr +
+			ax * (1 - ay) * *(ptr + 1));
+	}
+	else {
+		res = ((1 - ax) * (1 - ay) * *ptr +
+			ax * (1 - ay) * *(ptr + 1) +
+			(1 - ax) * ay * *(ptr + (img->ncols)) +
+			ax * ay * *(ptr + (img->ncols) + 1));
+	}
 	return res;
 }
 
@@ -1058,9 +1068,20 @@ static int myTrackFeatureAffine(
 		printf("%s\n", fname);
 		_KLTWriteAbsFloatImageToPGM(aff_diff_win, fname, 256.0);
 #endif
+		try {
+			_am_computeIntensityDifferenceAffine(img1, img2, x1, y1, *x2, *y2, *Axx, *Ayx, *Axy, *Ayy,
+				width, height, imgdiff);
+		}
+		catch (int) {
+			status = KLT_OOB;
+			break;
+		}
+		*error = _sumAbsFloatWindow(imgdiff, width / 2 * 2, height / 2 * 2);
+		if (*error < 2000) {
+			status = KLT_TRACKED;
+			break;
+		}
 
-		_am_computeIntensityDifferenceAffine(img1, img2, x1, y1, *x2, *y2, *Axx, *Ayx, *Axy, *Ayy,
-			width, height, imgdiff);
 #ifdef DEBUG_AFFINE_MAPPING    
 		aff_diff_win->data = imgdiff;
 		sprintf(fname, "./debug/kltimg_aff_diff_win%03d.%03d_3.pgm", glob_index, counter);
@@ -1069,9 +1090,15 @@ static int myTrackFeatureAffine(
 
 		printf("iter = %d affine tracker res: %f\n", iteration, _sumAbsFloatWindow(imgdiff, width, height) / (width * height));
 #endif      
-
-		_am_getGradientWinAffine(gradx2, grady2, *x2, *y2, *Axx, *Ayx, *Axy, *Ayy,
-			width, height, gradx, grady);
+		try {
+			_am_getGradientWinAffine(gradx2, grady2, *x2, *y2, *Axx, *Ayx, *Axy, *Ayy,
+				width, height, gradx, grady);
+		}
+		catch (int) {
+			status = KLT_OOB;
+			break;
+		}
+		
 
 		switch (affine_map) {
 		case 1:

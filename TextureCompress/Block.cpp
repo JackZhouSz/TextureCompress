@@ -86,10 +86,8 @@ void Block::computeColorHistogram(const Mat& img)
 {
     Mat imgBlock(this->size, this->size, CV_8UC3);
 
-    for (int i = 0; i < imgBlock.rows; i++)
-    {
-        for (int j = 0; j < imgBlock.cols; j++)
-        {
+    for (int i = 0; i < imgBlock.rows; i++){
+        for (int j = 0; j < imgBlock.cols; j++){
             imgBlock.at<Vec3b>(i, j) = img.at<Vec3b>(this->getStartHeight() + i, this->getStartWidth() + j);
         }
     }

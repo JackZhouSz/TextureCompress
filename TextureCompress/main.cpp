@@ -24,13 +24,14 @@ KLT_FeatureList testFl[16] = { nullptr };
 
 float NMSth = 50.0f;
 float simiThread = 0.5;
+float equalBlockThread = 1000;
 int matchNum = 0;
 vector<Block*> blocks;
 vector<Block*> seedBlocks;
 
 mutex mtx; // protect img
 
-const string imgPath = "..\\Resource\\orig2.png";
+const string imgPath = "..\\Resource\\orig.png";
 
 uchar* imgRead(const string imgPath, int* ncols, int* nrows);
 
@@ -42,7 +43,16 @@ bool myCompare(pair<pair<float, float>, pair<float, int> > a, pair<pair<float, f
 void FindInitMatch(int start, int end) {
     // color histogram simi
     for (int index = start; index < end; index++) {
+
         printf("\rcompute block simi[%.2f%%]", (index-start) * 100.0 / (end-start));
+
+        if (blocks[index]->equalBlock != -1) {
+            int scale = 1;
+            Point2f move = Point2f(0, 0);
+            blocks[index]->addInitMatch(move, 0, scale);
+            continue;
+        }
+
         for (int i = 0; i < seedBlocks.size(); i++)
         {
             int compare_method = 0; //Correlation ( CV_COMP_CORREL )
@@ -78,6 +88,9 @@ void FindingSimi(int start, int end, uchar* img, int threadIndex)
 
     tc = KLTCreateTrackingContext();
     testFl[threadIndex] = initialAffineTrack(tmpBlocks, tmpMatchNum, start);
+    for (vector<Block*>::const_iterator it = first; it != last; it++) {
+        (*it)->initMatchList.clear();
+    }
     myTrackAffine(tc, img, ncols, nrows, testFl[threadIndex]);
 
     return ;
@@ -299,7 +312,7 @@ void CreatingCharts()
                 int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
                 if (tmpCol < img.cols && tmpCol >= 0 && tmpRow < img.rows && tmpRow >= 0) {
                     imgRecon.at<Vec3b>(row + blocks[i]->getStartHeight() + blockSize / 2, 
-                        col + blocks[i]->getStartWidth() + blockSize / 2) = imgTest.at<Vec3b>(tmpRow, tmpCol);
+                        col + blocks[i]->getStartWidth() + blockSize / 2) = img.at<Vec3b>(tmpRow, tmpCol);
                 }
 
             }
@@ -310,7 +323,7 @@ void CreatingCharts()
     waitKey();
 
 
-      return;
+    return;
 }
 
 int main(int argc, char* argv[]) {
@@ -330,7 +343,7 @@ int main(int argc, char* argv[]) {
 
     vector<thread> t(threadNum);
     // why more threads wrong?
-    // threadNum = 1;
+    threadNum = 16;
     for (int i = 0; i < threadNum; i++) {
         t[i] = thread(FindingSimi, i * blocks.size() / threadNum, (i + 1) * blocks.size() / threadNum, img[i], i);
     }
@@ -386,7 +399,10 @@ int main(int argc, char* argv[]) {
     }
 
     for (int i = 0; i < blocks.size(); i++) {
-        blocks[i]->initMatchList.clear();
+        if (blocks[i]->equalBlock != -1) {
+            for (vector<Match>::iterator it = blocks[blocks[i]->equalBlock]->finalMatchList.begin(); it != blocks[blocks[i]->equalBlock]->finalMatchList.end(); it++)
+                blocks[i]->finalMatchList.push_back(*it);
+        }
     }
 
     // Reconstructed Test
@@ -422,6 +438,32 @@ int main(int argc, char* argv[]) {
 }
 
 
+float computeDiff(int index1, int index2, const Mat& img)
+{
+    float diff = 0;
+    int height1 = blocks[index1]->getStartHeight();
+    int height2 = blocks[index2]->getStartHeight();
+    int width1 = blocks[index1]->getStartWidth();
+    int width2 = blocks[index2]->getStartWidth();
+
+    for (int i = 0; i < blockSize; i++){
+        for (int j = 0; j < blockSize; j++){
+            // BGR
+            float t10 = float(img.at<Vec3b>(height1 + i, width1 + j)[0]);
+            float t11 = float(img.at<Vec3b>(height1 + i, width1 + j)[1]);
+            float t12 = float(img.at<Vec3b>(height1 + i, width1 + j)[2]);
+            float t20 = float(img.at<Vec3b>(height2 + i, width2 + j)[0]);
+            float t21 = float(img.at<Vec3b>(height2 + i, width2 + j)[1]);
+            float t22 = float(img.at<Vec3b>(height2 + i, width2 + j)[2]);
+
+            diff += abs(t10 - t20);
+            diff += abs(t11 - t21);
+            diff += abs(t12 - t22);
+        }
+    }
+    return diff;
+}
+
 uchar* imgRead(const string imgPath, int* ncols, int* nrows)
 {
     uchar* ptr;
@@ -438,6 +480,20 @@ uchar* imgRead(const string imgPath, int* ncols, int* nrows)
             Block* tmpBlock = new Block(blockIndex++, blockSize, row, col);
             tmpBlock->computeColorHistogram(img);
             blocks.push_back(tmpBlock);
+        }
+    }
+
+    // compute eualBlocks
+    for (int i = 0; i < blocks.size(); i++) {
+        printf("\rcompute eualBlocks[%.2f%%]", i * 100.0 / (blocks.size() - 1));
+        for (int j = 0; j < i; j++) {
+            if (blocks[j]->equalBlock != -1) continue;
+            if (computeDiff(i, j, img) < equalBlockThread)
+            {
+                blocks[i]->equalBlock = j;
+                break;
+            }
+
         }
     }
 
