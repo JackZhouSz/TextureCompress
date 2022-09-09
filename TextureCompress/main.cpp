@@ -4,6 +4,7 @@
 #include <cmath>
 #include <algorithm>
 #include <Windows.h>
+#include <bitset>
 #include "Block.h"
 
 //   klt
@@ -24,14 +25,15 @@ KLT_FeatureList testFl[16] = { nullptr };
 
 float NMSth = 50.0f;
 float simiThread = 0.5;
-float equalBlockThread = 1000;
+float equalBlockThread = 1300;
 int matchNum = 0;
 vector<Block*> blocks;
 vector<Block*> seedBlocks;
 
 mutex mtx; // protect img
 
-const string imgPath = "..\\Resource\\orig.png";
+const string imgPath = "..\\Resource\\";
+string imgName = "ColorScale";
 
 uchar* imgRead(const string imgPath, int* ncols, int* nrows);
 
@@ -44,7 +46,7 @@ void FindInitMatch(int start, int end) {
     // color histogram simi
     for (int index = start; index < end; index++) {
 
-        printf("\rcompute block simi[%.2f%%]", (index-start) * 100.0 / (end-start));
+        printf("\rcompute block simi[%.2f%%]", (index - start) * 100.0 / (end - start));
 
         if (blocks[index]->equalBlock != -1) {
             int scale = 1;
@@ -69,6 +71,23 @@ void FindInitMatch(int start, int end) {
                 matchNum++;
             }
         }
+
+        //for (int i = 0; i < blocks.size(); i++)
+        //{
+        //    int compare_method = 0; //Correlation ( CV_COMP_CORREL )
+        //    double simi = compareHist(blocks[index]->getHist(), blocks[i]->getHist(), compare_method);
+        //    cout << i << " simi:" << simi << endl;
+        //    if (simi > simiThread) {
+        //        //cout << i << " simi:" << simi << endl;
+        //        float testTheta = guessTheta(blocks[index]->getHog(), blocks[i]->getHog());
+        //        //cout << "index " << i << " theta " << testTheta << endl;
+        //        int scale = 1;
+        //        Point2f move = Point2f(blocks[i]->getStartWidth() - blocks[index]->getStartWidth(),
+        //            blocks[i]->getStartHeight() - blocks[index]->getStartHeight());
+        //        blocks[index]->addInitMatch(move, testTheta, scale);
+        //        matchNum++;
+        //    }
+        //}
     }
 }
 
@@ -97,13 +116,72 @@ void FindingSimi(int start, int end, uchar* img, int threadIndex)
 
 }
 
+string convertTobinary(double num, int nZero, int prec) {
+    string binary = "";
+    int integral = num;
+    double fractional = num - integral;
+    // converting integral to binary
+    while (integral) {
+        int rem = integral % 2;
+        binary.push_back(rem + '0');
+        integral /= 2;
+    }
+    reverse(binary.begin(), binary.end());
+    binary.push_back('.');
+    while (prec--) {
+        fractional *= 2;
+        int fractBit = fractional;
+        if (fractBit == 1) {
+            fractional -= 1;
+            binary.push_back('1');
+        }
+        else
+        {
+            binary.push_back('0');
+        }
+    }
+    binary = string(nZero - binary.length(), '0') + binary;
+    return binary;
+}
+
+void decodeTransform(Vec4b pix, double& transformX, double& transformY)
+{
+    // PIX BGRA
+    transformX = pix[1] * 8 + pix[2] / 32;
+    bitset<5> bit1(pix[2] % 32);
+    transformX += bit1[4] * 0.5 + bit1[3] * 0.25 + bit1[2] * 0.125 + bit1[1] * 0.0625 + bit1[0] * 0.03125;
+
+    transformY = pix[0] * 8 + pix[3] / 32;
+    bitset<5> bit2(pix[3] % 32);
+    transformY += bit2[4] * 0.5 + bit2[3] * 0.25 + bit2[2] * 0.125 + bit2[1] * 0.0625 + bit2[0] * 0.03125;
+
+}
+
+void decodeAffine(Vec4b pix, double& m0, double& m1)
+{
+    // PIX BGRA
+    // m0=m4 m1=-m3
+    bitset<3> bit1(pix[0] / 32);
+    m0 = bit1[0] + 2 * bit1[1];
+    bitset<5> bit2(pix[0] % 32);
+    m0 += bit2[4] * 0.5 + bit2[3] * 0.25 + bit2[2] * 0.125 + bit2[1] * 0.0625 + bit2[0] * 0.03125;
+    if (bit1[2] == 1) m0 = -m0;
+
+    bitset<3> bit3(pix[1] / 32);
+    m1 = bit3[0] + 2 * bit3[1];
+    bitset<5> bit4(pix[1] % 32);
+    m1 += bit4[4] * 0.5 + bit4[3] * 0.25 + bit4[2] * 0.125 + bit4[1] * 0.0625 + bit4[0] * 0.03125;
+    if (bit3[2] == 1) m1 = -m1;
+  
+}
+
 void CreatingCharts()
 {
     vector<int> matchRecord(blocks.size(), 1e9);
     vector<set<pair<int, int> > >tmpCover(blocks.size()), inverseCover(blocks.size()); // blockIndex & matchIndex
     vector<set<int> >candidateRegion(blocks.size()); // blockIndex & matchIndex
 
-    Mat img = imread(imgPath, 1);
+    Mat img = imread(imgPath + imgName + ".png", 1);
     int colBlockNum = img.cols / blockSize;
     int rowBlockNum = img.rows / blockSize;
 
@@ -149,7 +227,8 @@ void CreatingCharts()
                     int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
                     int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
                     int coverIndex = tmpRow / blockSize * (img.cols / blockSize) + tmpCol / blockSize;
-                    candidateRegion[index].insert(coverIndex);
+                    if(coverIndex<blocks.size())
+                        candidateRegion[index].insert(coverIndex);
                 }
             }
         }
@@ -295,7 +374,7 @@ void CreatingCharts()
         }
     }
 
-    imwrite("..\\Resource\\test.png", imgTest);
+    imwrite(imgPath + imgName + "_myEp.png", imgTest);
     imshow("image", imgTest);
     waitKey();
 
@@ -312,24 +391,112 @@ void CreatingCharts()
                 int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
                 if (tmpCol < img.cols && tmpCol >= 0 && tmpRow < img.rows && tmpRow >= 0) {
                     imgRecon.at<Vec3b>(row + blocks[i]->getStartHeight() + blockSize / 2, 
-                        col + blocks[i]->getStartWidth() + blockSize / 2) = img.at<Vec3b>(tmpRow, tmpCol);
+                        col + blocks[i]->getStartWidth() + blockSize / 2) = imgTest.at<Vec3b>(tmpRow, tmpCol);
                 }
 
             }
         }
     }
-    imwrite("..\\Resource\\imgRecon.png", imgRecon);
+    imwrite(imgPath + imgName + "_myaReco.png", imgRecon);
     imshow("imgRecon", imgRecon);
     waitKey();
 
+    // PositionMap Test
+
+    //CV_8UC3 
+    //CV_<bit_depth>(S|U|F)C<number_of_channels>
+    //bit_depth代表比特数（8 bit/16 bit/32 bit/64 bit）//
+    //bit_depth代表在创建的储存图片Mat对象中，每个像素点所占的空间大小
+    //S: signed int//
+    //U: unsigned int//
+    //F: float//
+    //C<number_of_channels>:存储的图片通道数//
+    //1---GRAY灰度图---单通道图像//
+    //2---RGB彩色图像---3通道图像//
+    //3---带Alpha通道的RGB彩色图像---4通道图像//    
+
+
+    Mat transformMap(rowBlockNum, colBlockNum, CV_8UC4);
+    Mat affineMap(rowBlockNum, colBlockNum, CV_8UC4);
+
+    for (int i = 0; i < blocks.size(); i++) {
+        Mat M = blocks[i]->finalMatchList[matchRecord[i]].getMatrix();
+        double* m = M.ptr<double>();
+        string transX = convertTobinary(m[2], 17, 5);
+        string G = transX.substr(0, 8);
+        string R = transX.substr(8, 3) + transX.substr(12);
+        string transY = convertTobinary(m[5], 17, 5);
+        string B = transY.substr(0, 8);
+        string A = transY.substr(8, 3) + transY.substr(12);
+
+        // BGRA :use GR save transformX, BA save transofrmY
+        transformMap.at<Vec4b>(blocks[i]->getStartHeight() / blockSize, blocks[i]->getStartWidth() / blockSize)[0] = (uchar)stoi(B, nullptr, 2);
+        transformMap.at<Vec4b>(blocks[i]->getStartHeight() / blockSize, blocks[i]->getStartWidth() / blockSize)[1] = (uchar)stoi(G, nullptr, 2);
+        transformMap.at<Vec4b>(blocks[i]->getStartHeight() / blockSize, blocks[i]->getStartWidth() / blockSize)[2] = (uchar)stoi(R, nullptr, 2);
+        transformMap.at<Vec4b>(blocks[i]->getStartHeight() / blockSize, blocks[i]->getStartWidth() / blockSize)[3] = (uchar)stoi(A, nullptr, 2);
+    
+        // B save M0  G save M1
+        B.clear();
+        B = convertTobinary(abs(m[0]), 9, 5);
+        if (m[0] > 0)
+            B = "0" + B.substr(1, 2) + B.substr(4);
+        else 
+            B = "1" + B.substr(1, 2) + B.substr(4);
+        G = convertTobinary(abs(m[1]), 9, 5); 
+        if (m[1] > 0)
+            G = "0" + G.substr(1, 2) + G.substr(4);
+        else
+            G = "1" + G.substr(1, 2) + G.substr(4);
+
+        affineMap.at<Vec4b>(blocks[i]->getStartHeight() / blockSize, blocks[i]->getStartWidth() / blockSize)[0] = (uchar)stoi(B, nullptr, 2);
+        affineMap.at<Vec4b>(blocks[i]->getStartHeight() / blockSize, blocks[i]->getStartWidth() / blockSize)[1] = (uchar)stoi(G, nullptr, 2);
+        affineMap.at<Vec4b>(blocks[i]->getStartHeight() / blockSize, blocks[i]->getStartWidth() / blockSize)[2] = (uchar)0;
+        affineMap.at<Vec4b>(blocks[i]->getStartHeight() / blockSize, blocks[i]->getStartWidth() / blockSize)[3] = (uchar)255;
+
+    }
+    imwrite(imgPath + imgName + "_myTransform.png", transformMap);
+    imwrite(imgPath + imgName + "_myAffine.png",    affineMap);
+
+
+    Mat transformTest = imread(imgPath + imgName + "_myTransform.png", IMREAD_UNCHANGED);
+    Mat affineTest    = imread(imgPath + imgName + "_myAffine.png",    IMREAD_UNCHANGED);
+
+    // Reconstructed Test
+    Mat imgRecon2(img.rows, img.cols, CV_8UC3);
+    namedWindow("ReconstructedTest");
+
+    for (int i = 0; i < blocks.size(); i++) {
+        Mat M = blocks[i]->finalMatchList[matchRecord[i]].getMatrix();
+        double* m = M.ptr<double>();
+        double transformX, transformY, m0, m1;
+        decodeTransform(transformTest.at<Vec4b>(i / rowBlockNum, i% rowBlockNum), transformX, transformY);
+        decodeAffine(affineTest.at<Vec4b>(i / rowBlockNum, i% rowBlockNum), m0, m1);
+        for (int row = -blockSize / 2; row < blockSize / 2; row++) {
+            for (int col = -blockSize / 2; col < blockSize / 2; col++) {
+              /*  int tmpCol = (int)(m0 * col + m1 * row + transformX);
+                int tmpRow = (int)(-m1 * col + m0 * row + transformY);*/
+                int tmpCol = (int)(col + transformX);
+                int tmpRow = (int)(row + transformY);
+                // 最后的结果应该使用双线性插值
+                if (tmpCol < img.cols && tmpCol >= 0 && tmpRow < img.rows && tmpRow >= 0) {
+                    imgRecon2.at<Vec3b>(row + blocks[i]->getStartHeight() + blockSize / 2,
+                        col + blocks[i]->getStartWidth() + blockSize / 2) = imgTest.at<Vec3b>(tmpRow, tmpCol);
+                }
+            }
+        }
+    }
+    imwrite(imgPath + imgName + "_myaReco2.png", imgRecon2);
+    imshow("imgRecon2", imgRecon2);
+    waitKey();
 
     return;
 }
 
+
 int main(int argc, char* argv[]) {
 
     
-    uchar* initImg = imgRead(imgPath, &ncols, &nrows);
+    uchar* initImg = imgRead(imgPath + imgName +".png", &ncols, &nrows);
 
     vector<uchar*> img(threadNum);
     for (int index = 0; index < threadNum; index++) {
@@ -343,7 +510,7 @@ int main(int argc, char* argv[]) {
 
     vector<thread> t(threadNum);
     // why more threads wrong?
-    threadNum = 16;
+    // threadNum = 10;
     for (int i = 0; i < threadNum; i++) {
         t[i] = thread(FindingSimi, i * blocks.size() / threadNum, (i + 1) * blocks.size() / threadNum, img[i], i);
     }

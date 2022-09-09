@@ -33,7 +33,7 @@ static const float step_factor = 1.0f;
 static const KLT_BOOL sequentialMode = FALSE;
 static const KLT_BOOL lighting_insensitive = FALSE;
 /* for affine mapping*/
-static const int affineConsistencyCheck = 1;
+static const int affineConsistencyCheck = 1 ;
 static const int affine_window_size = 13;
 static const int affine_max_iterations = 10;
 static const float affine_max_residue = 10.0;
@@ -190,7 +190,6 @@ KLT_FeatureList initialAffineTrack(vector<Block*> blocks, int matchNum, int bloc
     /* Set pointers */
     fl->feature = (KLT_Feature*)(fl + 1);
     first = (KLT_Feature)(fl->feature + matchNum);
-
 
     for (int index = 0; index < blocks.size(); index++) {
         for (int j = 0; j < blocks[index]->initMatchList.size(); j++) {

@@ -92,7 +92,7 @@ void Block::computeColorHistogram(const Mat& img)
         }
     }
 
-    Mat imgHSV,imgGray;
+    Mat imgHSV, imgGray;
     Mat mean, stddev;
     cvtColor(imgBlock, imgGray, COLOR_BGR2GRAY);
     meanStdDev(imgGray, mean, stddev);

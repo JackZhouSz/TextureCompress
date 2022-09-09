@@ -51,7 +51,7 @@ static float _interpolate(
 			"(x,y)=(%f,%f)  (ax,ay)=(%f,%f)\n",
 			xt, yt, img->ncols, img->nrows, x, y, ax, ay);
 		fflush(stderr);
-		//throw -1;
+		throw -1;
 	}
 #endif
 
@@ -698,11 +698,16 @@ static void _am_getSubFloatImage(
 	assert(x0 + hw <= img->ncols);
 	assert(y0 + hh <= img->nrows);
 
+	if (y0 + hh == img->nrows)
+		int t = 0;
+
 	/* copy values */
 	for (j = -hh; j <= hh; j++)
 		for (i = -hw; i <= hw; i++) {
 			offset = (j + y0) * img->ncols + (i + x0);
-			*windata++ = *(img->data + offset);
+			if (offset > img->ncols * img->nrows - 1)
+				*windata++ = 0;
+			else *windata++ = *(img->data + offset);
 		}
 }
 
@@ -1008,6 +1013,7 @@ static int myTrackFeatureAffine(
 	float** a;
 	float** T;
 	float one_plus_eps = 0.999f;   /* To prevent rounding errors */
+	float errorThread = 1300;
 	float old_x2 = *x2;
 	float old_y2 = *y2;
 	KLT_BOOL convergence = FALSE;
@@ -1077,7 +1083,7 @@ static int myTrackFeatureAffine(
 			break;
 		}
 		*error = _sumAbsFloatWindow(imgdiff, width / 2 * 2, height / 2 * 2);
-		if (*error < 2000) {
+		if (*error < errorThread) {
 			status = KLT_TRACKED;
 			break;
 		}
@@ -1199,6 +1205,9 @@ static int myTrackFeatureAffine(
 		*y2 - hh < 0.0f || nr2 - (*y2 + hh) + 1 < one_plus_eps)
 		status = KLT_OOB;
 
+	// avoid small affine
+	if (*Axx < 0.5) status = KLT_OOB;
+
 	///* Check whether feature point has moved to much during iteration*/
 	//if ((*x2 - old_x2) > mdd || (*y2 - old_y2) > mdd)
 	//	status = KLT_OOB;
@@ -1217,7 +1226,7 @@ static int myTrackFeatureAffine(
 		printf("iter = %d final_res = %f\n", iteration, _sumAbsFloatWindow(imgdiff, width, height) / (width * height));
 #endif 
 		*error = _sumAbsFloatWindow(imgdiff, width / 2 * 2, height / 2 * 2);
-		if (*error > 2000)
+		if (*error > errorThread)
 			status = KLT_LARGE_RESIDUE;
 	}
 
@@ -1884,7 +1893,7 @@ void myTrackAffine(
 
 
 	/* Write internal images */
-	/*if (1) {
+	if (1) {
 		char fname[80];
 		for (i = 0; i < tc->nPyramidLevels; i++) {
 			sprintf(fname, "..\\Resource\\kltimg_tf_i%d.pgm", i);
@@ -1895,15 +1904,12 @@ void myTrackAffine(
 			_KLTWriteFloatImageToPGM(pyramid_grady->img[i], fname);
 			sprintf(fname, "..\\Resource\\kltimg_tf_j%d.pgm", i);
 		}
-	}*/
+	}
 
 	/* For each feature, do ... */
 	for (indx = 0; indx < featurelist->nFeatures; indx++) {
 
 		printf("\rcompute feature affine [%.2f%%]", indx * 100.0 / (featurelist->nFeatures - 1));
-
-		if (indx * 100.0 / (featurelist->nFeatures - 1) >= 91)
-			int xi = 0;
 
 		xloc = featurelist->feature[indx]->x;
 		yloc = featurelist->feature[indx]->y;
