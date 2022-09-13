@@ -102,6 +102,7 @@ typedef struct {
     KLT_locType aff_Axy;
     KLT_locType aff_Ayy;
     int block_index;
+    float stddev;
     float error;
 }  KLT_FeatureRec, * KLT_Feature;
 

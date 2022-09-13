@@ -33,7 +33,7 @@ vector<Block*> seedBlocks;
 mutex mtx; // protect img
 
 const string imgPath = "..\\Resource\\";
-string imgName = "ColorScale";
+string imgName = "patchImg";
 
 uchar* imgRead(const string imgPath, int* ncols, int* nrows);
 
@@ -71,23 +71,6 @@ void FindInitMatch(int start, int end) {
                 matchNum++;
             }
         }
-
-        //for (int i = 0; i < blocks.size(); i++)
-        //{
-        //    int compare_method = 0; //Correlation ( CV_COMP_CORREL )
-        //    double simi = compareHist(blocks[index]->getHist(), blocks[i]->getHist(), compare_method);
-        //    cout << i << " simi:" << simi << endl;
-        //    if (simi > simiThread) {
-        //        //cout << i << " simi:" << simi << endl;
-        //        float testTheta = guessTheta(blocks[index]->getHog(), blocks[i]->getHog());
-        //        //cout << "index " << i << " theta " << testTheta << endl;
-        //        int scale = 1;
-        //        Point2f move = Point2f(blocks[i]->getStartWidth() - blocks[index]->getStartWidth(),
-        //            blocks[i]->getStartHeight() - blocks[index]->getStartHeight());
-        //        blocks[index]->addInitMatch(move, testTheta, scale);
-        //        matchNum++;
-        //    }
-        //}
     }
 }
 
@@ -196,7 +179,7 @@ void CreatingCharts()
                     int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
                     int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
                     int coverIndex = tmpRow / blockSize * colBlockNum + tmpCol / blockSize;
-                    if (coverIndex < tmpCover.size())
+                    if (coverIndex < blocks.size())
                         tmpCover[coverIndex].insert(make_pair(index, i));
                 }
             }
@@ -215,6 +198,7 @@ void CreatingCharts()
             }
         }
     }
+
     // compute candidateRegion
     for (int index = 0; index < blocks.size(); index++) {
         printf("\r compute candidateRegion [%.2f%%]", index * 100.0 / blocks.size());
@@ -227,7 +211,7 @@ void CreatingCharts()
                     int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
                     int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
                     int coverIndex = tmpRow / blockSize * (img.cols / blockSize) + tmpCol / blockSize;
-                    if(coverIndex<blocks.size())
+                    if (coverIndex < blocks.size())
                         candidateRegion[index].insert(coverIndex);
                 }
             }
@@ -337,6 +321,7 @@ void CreatingCharts()
         
     }
     
+    vector<int> tmpMatchRecord = matchRecord;
     // Optimizing the transform map
     for (int index = 0; index < blocks.size(); index++) {
         for (int i = 0; i < blocks[index]->finalMatchList.size() && i < matchRecord[index]; i++) {
@@ -362,20 +347,36 @@ void CreatingCharts()
         }
     }
 
-    // Reconstructed Test
-    Mat imgTest(img.rows, img.cols, CV_8UC3);
-    namedWindow("Test");
-
-    for (set<int>::iterator it = epitome.begin(); it != epitome.end(); it++) {
+    // to do
+    set<int> FinalEpitome;
+    for (int i = 0; i < blocks.size(); i++) {
+        Mat M = blocks[i]->finalMatchList[matchRecord[i]].getMatrix();
+        double* m = M.ptr<double>();
         for (int row = -blockSize / 2; row < blockSize / 2; row++) {
             for (int col = -blockSize / 2; col < blockSize / 2; col++) {
-                imgTest.at<Vec3b>(row + blocks[*it]->getStartHeight() + blockSize / 2, col + blocks[*it]->getStartWidth() + blockSize / 2) = img.at<Vec3b>(row + blocks[*it]->getStartHeight() + blockSize / 2, col + blocks[*it]->getStartWidth() + blockSize / 2);
+                int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
+                int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
+                int coverIndex = tmpRow / blockSize * colBlockNum + tmpCol / blockSize;
+                FinalEpitome.insert(coverIndex);
             }
         }
     }
 
-    imwrite(imgPath + imgName + "_myEp.png", imgTest);
-    imshow("image", imgTest);
+    // Reconstructed Test
+
+    Mat imgEpitome(img.rows, img.cols, CV_8UC3);
+    namedWindow("imgEpitome");
+
+    for (set<int>::iterator it = FinalEpitome.begin(); it != FinalEpitome.end(); it++) {
+        for (int row = -blockSize / 2; row < blockSize / 2; row++) {
+            for (int col = -blockSize / 2; col < blockSize / 2; col++) {
+                imgEpitome.at<Vec3b>(row + blocks[*it]->getStartHeight() + blockSize / 2, col + blocks[*it]->getStartWidth() + blockSize / 2) = img.at<Vec3b>(row + blocks[*it]->getStartHeight() + blockSize / 2, col + blocks[*it]->getStartWidth() + blockSize / 2);
+            }
+        }
+    }
+
+    imwrite(imgPath + imgName + "_myEp.png", imgEpitome);
+    imshow("image", imgEpitome);
     waitKey();
 
     // Reconstructed Test
@@ -391,11 +392,13 @@ void CreatingCharts()
                 int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
                 if (tmpCol < img.cols && tmpCol >= 0 && tmpRow < img.rows && tmpRow >= 0) {
                     imgRecon.at<Vec3b>(row + blocks[i]->getStartHeight() + blockSize / 2, 
-                        col + blocks[i]->getStartWidth() + blockSize / 2) = imgTest.at<Vec3b>(tmpRow, tmpCol);
+                        col + blocks[i]->getStartWidth() + blockSize / 2) = imgEpitome.at<Vec3b>(tmpRow, tmpCol);
                 }
 
             }
         }
+        /*imshow("imgRecon", imgRecon);
+        waitKey();*/
     }
     imwrite(imgPath + imgName + "_myaReco.png", imgRecon);
     imshow("imgRecon", imgRecon);
@@ -473,14 +476,12 @@ void CreatingCharts()
         decodeAffine(affineTest.at<Vec4b>(i / rowBlockNum, i% rowBlockNum), m0, m1);
         for (int row = -blockSize / 2; row < blockSize / 2; row++) {
             for (int col = -blockSize / 2; col < blockSize / 2; col++) {
-              /*  int tmpCol = (int)(m0 * col + m1 * row + transformX);
-                int tmpRow = (int)(-m1 * col + m0 * row + transformY);*/
-                int tmpCol = (int)(col + transformX);
-                int tmpRow = (int)(row + transformY);
+                int tmpCol = (int)(m0 * col + m1 * row + transformX);
+                int tmpRow = (int)(-m1 * col + m0 * row + transformY);
                 // 最后的结果应该使用双线性插值
                 if (tmpCol < img.cols && tmpCol >= 0 && tmpRow < img.rows && tmpRow >= 0) {
                     imgRecon2.at<Vec3b>(row + blocks[i]->getStartHeight() + blockSize / 2,
-                        col + blocks[i]->getStartWidth() + blockSize / 2) = imgTest.at<Vec3b>(tmpRow, tmpCol);
+                        col + blocks[i]->getStartWidth() + blockSize / 2) = imgEpitome.at<Vec3b>(tmpRow, tmpCol);
                 }
             }
         }
@@ -492,10 +493,8 @@ void CreatingCharts()
     return;
 }
 
-
 int main(int argc, char* argv[]) {
 
-    
     uchar* initImg = imgRead(imgPath + imgName +".png", &ncols, &nrows);
 
     vector<uchar*> img(threadNum);
@@ -510,7 +509,7 @@ int main(int argc, char* argv[]) {
 
     vector<thread> t(threadNum);
     // why more threads wrong?
-    // threadNum = 10;
+    // threadNum = 1;
     for (int i = 0; i < threadNum; i++) {
         t[i] = thread(FindingSimi, i * blocks.size() / threadNum, (i + 1) * blocks.size() / threadNum, img[i], i);
     }
@@ -563,6 +562,8 @@ int main(int argc, char* argv[]) {
                 blocks[i]->finalMatchList.push_back(Match(M));
             }
         }
+    
+        
     }
 
     for (int i = 0; i < blocks.size(); i++) {
@@ -573,31 +574,33 @@ int main(int argc, char* argv[]) {
     }
 
     // Reconstructed Test
-    /*Mat img = imread(imgPath, 1);
-    Mat imgTest(img.rows, img.cols, CV_8UC3);
-    namedWindow("Test");
+    //Mat img1 = imread(imgPath + imgName + ".png", 1);
+    //Mat imgTest(nrows, ncols, CV_8UC3);
+    //namedWindow("Test");
 
-    for (int index = 0; index < blocks.size(); index++) {
-        for (int i = 0; i < blocks[index]->finalMatchList.size(); i++) {
-            Mat M = blocks[index]->finalMatchList[i].getMatrix();
-            double* m = M.ptr<double>();
-            for (int row = -blockSize / 2; row < blockSize / 2; row++) {
-                for (int col = -blockSize / 2; col < blockSize / 2; col++) {
-                    int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
-                    int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
-                    if (tmpCol < img.cols && tmpCol >= 0 && tmpRow < img.rows && tmpRow >= 0) {
+    //for (int index = 0; index < blocks.size(); index++) {
+    //    if(index==33)
+    //    for (int i = 0; i < blocks[index]->finalMatchList.size(); i++) {
+    //        Mat M = blocks[index]->finalMatchList[i].getMatrix();
+    //        double* m = M.ptr<double>();
+    //        for (int row = -blockSize / 2; row < blockSize / 2; row++) {
+    //            for (int col = -blockSize / 2; col < blockSize / 2; col++) {
+    //                int tmpCol = (int)(m[0] * col + m[1] * row + m[2]);
+    //                int tmpRow = (int)(m[3] * col + m[4] * row + m[5]);
+    //                if (tmpCol < ncols && tmpCol >= 0 && tmpRow < nrows && tmpRow >= 0) {
 
-                        imgTest.at<Vec3b>(tmpRow, tmpCol) = img.at<Vec3b>(row + blocks[index]->getStartHeight()+ blockSize / 2, col + blocks[index]->getStartWidth() + blockSize / 2);
-                    }
-                }
-            }
-            imshow("image", imgTest);
-            waitKey();
-        }
-    }
-    imwrite("..\\Resource\\test.png", imgTest);
-    imshow("image", imgTest);
-    waitKey();*/
+    //                    //imgTest.at<Vec3b>(tmpRow, tmpCol) = img1.at<Vec3b>(row + blocks[index]->getStartHeight()+ blockSize / 2, col + blocks[index]->getStartWidth() + blockSize / 2);
+    //                    imgTest.at<Vec3b>(tmpRow, tmpCol) = img1.at<Vec3b>(tmpRow, tmpCol);
+    //                }
+    //            }
+    //        }
+    //        imshow("image", imgTest);
+    //        waitKey();
+    //    }
+    //}
+    //imwrite("..\\Resource\\test.png", imgTest);
+    //imshow("image", imgTest);
+    //waitKey();
 
     CreatingCharts();
     
@@ -649,7 +652,7 @@ uchar* imgRead(const string imgPath, int* ncols, int* nrows)
             blocks.push_back(tmpBlock);
         }
     }
-
+      
     // compute eualBlocks
     for (int i = 0; i < blocks.size(); i++) {
         printf("\rcompute eualBlocks[%.2f%%]", i * 100.0 / (blocks.size() - 1));
@@ -681,6 +684,13 @@ uchar* imgRead(const string imgPath, int* ncols, int* nrows)
     }
     for (int i = 0; i < threadNum; i++) {
         t[i].join();
+    }
+
+    for (auto it = seedBlocks.begin(); it != seedBlocks.end(); it++) {
+        if (*it != NULL) {
+            delete* it;
+            *it = NULL;
+        }
     }
 
     *ncols = img.cols;

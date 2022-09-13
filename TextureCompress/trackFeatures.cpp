@@ -375,8 +375,11 @@ static float _sumAbsFloatWindow(
 	int w;
 
 	for (; height > 0; height--)
-		for (w = 0; w < width; w++)
-			sum += (float)fabs(*fw++);
+		for (w = 0; w < width; w++) {
+			float diff = (float)*fw++;
+			sum += diff * diff;
+		}
+			
 
 	return sum;
 }
@@ -997,7 +1000,8 @@ static int myTrackFeatureAffine(
 	float mdd,           /* difference between the displacements */
 	float* Axx, float* Ayx,
 	float* Axy, float* Ayy,        /* used affine mapping */
-	float* error)
+	float* error,
+	float* stddev)
 {
 
 	_FloatWindow imgdiff, gradx, grady;
@@ -1013,7 +1017,7 @@ static int myTrackFeatureAffine(
 	float** a;
 	float** T;
 	float one_plus_eps = 0.999f;   /* To prevent rounding errors */
-	float errorThread = 1300;
+	float errorThread = 0.8;
 	float old_x2 = *x2;
 	float old_y2 = *y2;
 	KLT_BOOL convergence = FALSE;
@@ -1082,7 +1086,8 @@ static int myTrackFeatureAffine(
 			status = KLT_OOB;
 			break;
 		}
-		*error = _sumAbsFloatWindow(imgdiff, width / 2 * 2, height / 2 * 2);
+		*error = _sumAbsFloatWindow(imgdiff, width / 2 * 2, height / 2 * 2) / (pow(*stddev * *stddev, 1.5) + 1.0);
+		//printf("error %f\n", *error);
 		if (*error < errorThread) {
 			status = KLT_TRACKED;
 			break;
@@ -1225,7 +1230,7 @@ static int myTrackFeatureAffine(
 #ifdef DEBUG_AFFINE_MAPPING
 		printf("iter = %d final_res = %f\n", iteration, _sumAbsFloatWindow(imgdiff, width, height) / (width * height));
 #endif 
-		*error = _sumAbsFloatWindow(imgdiff, width / 2 * 2, height / 2 * 2);
+		* error = _sumAbsFloatWindow(imgdiff, width / 2 * 2, height / 2 * 2) / (pow(*stddev * *stddev, 1.5) + 1.0);
 		if (*error > errorThread)
 			status = KLT_LARGE_RESIDUE;
 	}
@@ -1893,18 +1898,18 @@ void myTrackAffine(
 
 
 	/* Write internal images */
-	if (1) {
-		char fname[80];
-		for (i = 0; i < tc->nPyramidLevels; i++) {
-			sprintf(fname, "..\\Resource\\kltimg_tf_i%d.pgm", i);
-			_KLTWriteFloatImageToPGM(pyramid->img[i], fname);
-			sprintf(fname, "..\\Resource\\kltimg_tf_i%d_gx.pgm", i);
-			_KLTWriteFloatImageToPGM(pyramid_gradx->img[i], fname);
-			sprintf(fname, "..\\Resource\\kltimg_tf_i%d_gy.pgm", i);
-			_KLTWriteFloatImageToPGM(pyramid_grady->img[i], fname);
-			sprintf(fname, "..\\Resource\\kltimg_tf_j%d.pgm", i);
-		}
-	}
+	//if (1) {
+	//	char fname[80];
+	//	for (i = 0; i < tc->nPyramidLevels; i++) {
+	//		sprintf(fname, "..\\Resource\\kltimg_tf_i%d.pgm", i);
+	//		_KLTWriteFloatImageToPGM(pyramid->img[i], fname);
+	//		sprintf(fname, "..\\Resource\\kltimg_tf_i%d_gx.pgm", i);
+	//		_KLTWriteFloatImageToPGM(pyramid_gradx->img[i], fname);
+	//		sprintf(fname, "..\\Resource\\kltimg_tf_i%d_gy.pgm", i);
+	//		_KLTWriteFloatImageToPGM(pyramid_grady->img[i], fname);
+	//		sprintf(fname, "..\\Resource\\kltimg_tf_j%d.pgm", i);
+	//	}
+	//}
 
 	/* For each feature, do ... */
 	for (indx = 0; indx < featurelist->nFeatures; indx++) {
@@ -1930,7 +1935,7 @@ void myTrackAffine(
 	
 
 		/* affine tracking */
-		val = myTrackFeatureAffine(tc->affine_window_width/ 2, tc->affine_window_height/ 2,
+		val = myTrackFeatureAffine(tc->affine_window_width / 2, tc->affine_window_height / 2,
 			&xlocout, &ylocout,
 			featurelist->feature[indx]->aff_img,
 			featurelist->feature[indx]->aff_img_gradx,
@@ -1951,11 +1956,15 @@ void myTrackAffine(
 			&featurelist->feature[indx]->aff_Ayx,
 			&featurelist->feature[indx]->aff_Axy,
 			&featurelist->feature[indx]->aff_Ayy,
-			&featurelist->feature[indx]->error
+			&featurelist->feature[indx]->error,
+			&featurelist->feature[indx]->stddev
 		);
 		featurelist->feature[indx]->aff_x = xlocout;
 		featurelist->feature[indx]->aff_y = ylocout;
 		featurelist->feature[indx]->val = val;
 
+		_KLTFreeFloatImage(featurelist->feature[indx]->aff_img);
+		_KLTFreeFloatImage(featurelist->feature[indx]->aff_img_gradx);
+		_KLTFreeFloatImage(featurelist->feature[indx]->aff_img_grady);
 	}
 }

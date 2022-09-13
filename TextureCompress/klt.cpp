@@ -208,7 +208,7 @@ KLT_FeatureList initialAffineTrack(vector<Block*> blocks, int matchNum, int bloc
             fl->feature[i]->aff_Ayy = m[4];
             fl->feature[i]->aff_y = m[5];
             fl->feature[i]->block_index = index + blockStartIndex;
-
+            fl->feature[i]->stddev = blocks[index]->getStddev();
             i++;
         }
     }
