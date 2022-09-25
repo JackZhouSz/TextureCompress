@@ -380,7 +380,6 @@ static float _sumAbsFloatWindow(
 			sum += diff * diff;
 		}
 			
-
 	return sum;
 }
 
@@ -1001,7 +1000,8 @@ static int myTrackFeatureAffine(
 	float* Axx, float* Ayx,
 	float* Axy, float* Ayy,        /* used affine mapping */
 	float* error,
-	float* stddev)
+	float* stddev,
+	float* affineCenterX, float* affineCenterY)
 {
 
 	_FloatWindow imgdiff, gradx, grady;
@@ -1014,10 +1014,10 @@ static int myTrackFeatureAffine(
 	int nr1 = img1->nrows;
 	int nc2 = img2->ncols;
 	int nr2 = img2->nrows;
-	float** a;
+	float** a; 
 	float** T;
 	float one_plus_eps = 0.999f;   /* To prevent rounding errors */
-	float errorThread = 0.8;
+	float errorThread = 0.008 * (img1->ncols) * (img1->ncols);
 	float old_x2 = *x2;
 	float old_y2 = *y2;
 	KLT_BOOL convergence = FALSE;
@@ -1086,7 +1086,7 @@ static int myTrackFeatureAffine(
 			status = KLT_OOB;
 			break;
 		}
-		*error = _sumAbsFloatWindow(imgdiff, width / 2 * 2, height / 2 * 2) / (pow(*stddev * *stddev, 1.5) + 1.0);
+		*error = _sumAbsFloatWindow(imgdiff, width / 2 * 2, height / 2 * 2) / (pow(*stddev * *stddev, 1.5) + 0.3);
 		//printf("error %f\n", *error);
 		if (*error < errorThread) {
 			status = KLT_TRACKED;
@@ -1195,7 +1195,9 @@ static int myTrackFeatureAffine(
 			fabs(lr_x) < th_aff && fabs(lr_y) < th_aff);
 		
 		if (status == KLT_SMALL_DET)  break;
+
 		iteration++;
+
 
 #ifdef DEBUG_AFFINE_MAPPING 
 		printf("iter = %d, x1=%f, y1=%f, x2=%f, y2=%f,  Axx=%f, Ayx=%f , Axy=%f, Ayy=%f \n", iteration, x1, y1, *x2, *y2, *Axx, *Ayx, *Axy, *Ayy);
@@ -1211,7 +1213,7 @@ static int myTrackFeatureAffine(
 		status = KLT_OOB;
 
 	// avoid small affine
-	if (*Axx < 0.5) status = KLT_OOB;
+	if ((*Axx) * (*Axx) + (*Ayx) * (*Ayx) < 0.2) status = KLT_OOB;
 
 	///* Check whether feature point has moved to much during iteration*/
 	//if ((*x2 - old_x2) > mdd || (*y2 - old_y2) > mdd)
@@ -1230,9 +1232,20 @@ static int myTrackFeatureAffine(
 #ifdef DEBUG_AFFINE_MAPPING
 		printf("iter = %d final_res = %f\n", iteration, _sumAbsFloatWindow(imgdiff, width, height) / (width * height));
 #endif 
-		* error = _sumAbsFloatWindow(imgdiff, width / 2 * 2, height / 2 * 2) / (pow(*stddev * *stddev, 1.5) + 1.0);
+		* error = _sumAbsFloatWindow(imgdiff, width / 2 * 2, height / 2 * 2) / (pow(*stddev * *stddev, 1.5) + 0.3);
 		if (*error > errorThread)
 			status = KLT_LARGE_RESIDUE;
+
+		float ul_x_new = *Axx * (-hw) + *Axy * hh + *x2;
+		float ul_y_new = *Ayx * (-hw) + *Ayy * hh + *y2;
+		float ll_x_new = *Axx * (-hw) + *Axy * (-hh) + *x2;
+		float ll_y_new = *Ayx * (-hw) + *Ayy * (-hh) + *y2;
+		float ur_x_new = *Axx * hw + *Axy * hh + *x2;
+		float ur_y_new = *Ayx * hw + *Ayy * hh + *y2;
+		float lr_x_new = *Axx * hw + *Axy * (-hh) + *x2;
+		float lr_y_new = *Ayx * hw + *Ayy * (-hh) + *y2;
+		*affineCenterX = (ul_x_new + ll_x_new + ur_x_new + lr_x_new) / 4.0;
+		*affineCenterY = (ul_y_new + ll_y_new + ur_y_new + lr_y_new) / 4.0;
 	}
 
 	/* Free memory */
@@ -1911,6 +1924,7 @@ void myTrackAffine(
 	//	}
 	//}
 
+	
 	/* For each feature, do ... */
 	for (indx = 0; indx < featurelist->nFeatures; indx++) {
 
@@ -1957,7 +1971,10 @@ void myTrackAffine(
 			&featurelist->feature[indx]->aff_Axy,
 			&featurelist->feature[indx]->aff_Ayy,
 			&featurelist->feature[indx]->error,
-			&featurelist->feature[indx]->stddev
+			&featurelist->feature[indx]->stddev,
+			&featurelist->feature[indx]->affineCenterX,
+			&featurelist->feature[indx]->affineCenterY
+
 		);
 		featurelist->feature[indx]->aff_x = xlocout;
 		featurelist->feature[indx]->aff_y = ylocout;

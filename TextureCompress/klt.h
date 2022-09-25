@@ -104,6 +104,8 @@ typedef struct {
     int block_index;
     float stddev;
     float error;
+    float affineCenterX;
+    float affineCenterY;
 }  KLT_FeatureRec, * KLT_Feature;
 
 typedef struct {
@@ -127,8 +129,8 @@ typedef struct {
  */
 
  /* Create */
-KLT_FeatureList initialAffineTrack(vector<Block*> blocks, int matchNum, int blockStartIndex);
-KLT_TrackingContext KLTCreateTrackingContext(void);
+KLT_FeatureList initialAffineTrack(vector<Block*> blocks, int matchNum, int start, int end);
+KLT_TrackingContext KLTCreateTrackingContext(int blockSize);
 KLT_FeatureList KLTCreateFeatureList(
     int nFeatures);
 KLT_FeatureHistory KLTCreateFeatureHistory(

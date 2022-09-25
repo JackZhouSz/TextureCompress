@@ -2,7 +2,7 @@
 
 // HOG feature
 // Parameters
-#define N_BINS 36   // Number of bins
+#define N_BINS 12   // Number of bins
 #define INF 1e9
 
 Mat Hog(const Mat& img)
@@ -12,16 +12,19 @@ Mat Hog(const Mat& img)
     cvtColor(img, imgGray, COLOR_BGR2GRAY);
     // calculate gradients gx gy
     Mat gx, gy, mag, angle;
+
     Sobel(imgGray, gx, CV_32F, 1, 0, 1);
     Sobel(imgGray, gy, CV_32F, 0, 1, 1);
     // calculate gradient magnitude and direction
     cartToPolar(gx, gy, mag, angle, 1);
+    //cout << "mag" << mag << endl;
+    //cout << "angle" << angle << endl;
     for (int row = 0; row < img.rows; row++) {
         for (int col = 0; col < img.cols; col++) {
-            hog.at<float>(0, angle.at<float>(row, col) / 10) += mag.at<float>(row, col);
+            hog.at<float>(0, angle.at<float>(row, col) / (360/N_BINS)) += mag.at<float>(row, col);
         }
     }
-    //cout << hog << endl;
+    //cout << "hog" << hog << endl;
     return hog;
 }
 
@@ -33,13 +36,14 @@ float guessTheta(const Mat& blockHog, const Mat& seedHog)
         tmpError = 0;
         for (int i = 0; i < N_BINS; i++) {
             tmpError += pow(blockHog.at<float>(0, i) - seedHog.at<float>(0, ((i + tmpTheta) % N_BINS)), 2);
+            //tmpError += abs(blockHog.at<float>(0, i) - seedHog.at<float>(0, ((i + tmpTheta) % N_BINS)));
         }
         if (tmpError < minError) {
             minError = tmpError;
             minTheta = tmpTheta;
         }
     }
-    return minTheta * 10;
+    return minTheta * (360 / N_BINS);
 }
 
 void Block::setColor(Mat& img, Vec3f color)
@@ -105,7 +109,7 @@ void Block::computeColorHistogram(const Mat& img)
 
     // hue varies from 0 to 179, saturation from 0 to 255
     float hRanges[] = { 0, 180 };
-    float sRanges[] = { 0, 256 };
+    float sRanges[] = { 0, 255 };
     const float* ranges[] = { hRanges, sRanges };
 
     // Use the 0-th and 1-st channels

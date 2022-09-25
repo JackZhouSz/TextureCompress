@@ -17,12 +17,13 @@ using namespace std;
 
 class Block {
 public:
-    Block(int _index, int _size, int _startHeight, int _startWidth)
+    Block(int _index, int _size, int _startHeight, int _startWidth, float _scale = 1)
     {
         index = _index;
         size = _size;
         startHeight = _startHeight;
         startWidth = _startWidth;
+        scale = _scale;
     }
     int getIndex() { return index; }
     int getSize() { return size; }
@@ -30,6 +31,7 @@ public:
     int getStartWidth() { return startWidth; }
     float getMeanLight() { return meanLight; }
     float getStddev() { return stddev; }
+    float getScale() { return scale; }
     Mat getHist() { return hsvHist; }
     Mat getHog() { return oriHist; }
     
@@ -50,6 +52,7 @@ private:
     Mat hsvHist;
     Mat oriHist;
     float meanLight, stddev;
+    float scale;
 };
 
 Mat Hog(const Mat& img);
